@@ -119,6 +119,34 @@ extern int basicValidation(struct simpleLinkedList *postdata) {
 
 // Check trhe hashtable to ensure it only contains the specified keys
 static int checkOnlyKeys(struct simpleLinkedList *postdata, char *keyList) {
+	//check if key exists in postdata
+	int n=strlen(keyList);
+	if (n == 0 ) {
+		o_log(DEBUGM,"checkOnlyKeys: no key to check");
+		return(0);
+	}
+	o_log(DEBUGM,"checkOnlyKeys: validation on %s (%d)",keyList,strlen(keyList));
+	//stack should be sufficient to hold data for key
+	char key[n];
+
+	int c=0;
+	for(n=0; n<=strlen(keyList); n++) {
+		if (keyList[n] == ',' || keyList[n] == '\0') {
+			key[c]='\0';
+			o_log(DEBUGM,"checkOnlyKeys: validating key %s in post request postdataPtr(%x)",key,postdata);
+  			struct simpleLinkedList *data = sll_searchKeys(postdata, (const char *)key);
+			if ( data == NULL) {
+				o_log(ERROR,"checkOnlyKeys: validation key %s missing in post request",key);
+				return(1);
+			}
+			o_log(ERROR,"checkOnlyKeys: key %s found in post request postdataPtr(%x)",key,postdata);
+			c=0;		
+		} else {
+			key[c]=keyList[n];
+			c++;
+		}
+	}
+	return(0);
   // TODO
 /*  char *olds = keyList;
   char olddelim = ',';
@@ -332,7 +360,8 @@ extern int validate(struct simpleLinkedList *postdata, char *action) {
   }
 
   if ( 0 == strcmp(action, "doScan") ) {
-    ret += checkOnlyKeys(postdata, "deviceid,format,resolution,pages,ocr,pageLength");
+    //check TODO #1# ret += checkOnlyKeys(postdata, "deviceid,format,resolution,pages,ocr,pageLength");
+    ret += checkOnlyKeys(postdata, "deviceid,format,resolution,pages,ocr");
     ret += checkDeviceId(getPostData(postdata, "deviceid"));
     ret += checkFormat(getPostData(postdata, "format"));
     ret += checkResolution(getPostData(postdata, "resolution"));
@@ -366,7 +395,9 @@ extern int validate(struct simpleLinkedList *postdata, char *action) {
   }
 
   if ( 0 == strcmp(action, "docFilter") ) {
-    ret += checkOnlyKeys(postdata, "subaction,textSearch,startDate,endDate,tags");
+    //ret += checkOnlyKeys(postdata, "subaction,textSearch,startDate,endDate,tags");
+	//TODO #1# rework need to investigate parsing for POST request to sll
+    ret += checkOnlyKeys(postdata, "subaction");
 
     ret += checkFullCount(getPostData(postdata, "subaction"));
 
@@ -393,8 +424,9 @@ extern int validate(struct simpleLinkedList *postdata, char *action) {
   }
 
   if ( 0 == strcmp(action, "uploadfile") ) {
-    ret += checkOnlyKeys(postdata, "filename,ftype");
-    ret += validUploadType(getPostData(postdata, "ftype"));
+    //filename is not a post request key its an attribute of the key uploadfile ret += checkOnlyKeys(postdata, "filename,ftype");
+    ret += checkOnlyKeys(postdata, "ftype");
+    if (ret == 0 ) ret += validUploadType(getPostData(postdata, "ftype"));
   }
 
   if ( 0 == strcmp(action, "getAccessDetails") ) {
@@ -411,9 +443,10 @@ extern int validate(struct simpleLinkedList *postdata, char *action) {
   }
 
   if ( 0 == strcmp(action, "controlAccess") ) {
-    ret += checkOnlyKeys(postdata, "submethod,address,user,password,role");
-    ret += checkControlAccessMethod(getPostData(postdata, "submethod"));
-    ret += checkRole(getPostData(postdata, "role"));
+    //check TODO #1# ret += checkOnlyKeys(postdata, "submethod,address,user,password,role");
+    ret += checkOnlyKeys(postdata, "submethod,address,role");
+    if (ret == 0) ret += checkControlAccessMethod(getPostData(postdata, "submethod"));
+    if (ret == 0) ret += checkRole(getPostData(postdata, "role"));
   }
 
   return ret;
