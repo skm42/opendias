@@ -234,7 +234,7 @@ $(document).ready(function() {
                }
              });
              var bestLow = 300;
-             var bestHigh = 400;
+             var bestHigh = 2400;
              var resFactor = 215 / (parseInt($(this).find("max").text()) - parseInt($(this).find("min").text()) );
              $("#resolutionGood_"+device).css( { 'left': resFactor * (bestLow - parseInt($(this).find("min").text()) ),
                                                  'width': (bestHigh - bestLow) * resFactor*1.05 } );

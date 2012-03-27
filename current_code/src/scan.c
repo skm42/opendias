@@ -579,7 +579,10 @@ void ocrImage( char *uuid, int docid, SANE_Byte *raw_image, int page, int reques
 #ifdef CAN_OCR
   if(ocrLang && 0 != strcmp(ocrLang, "-") ) {
 
-    if(request_resolution >= 300 && request_resolution <= 400) {
+	//what is the rationale behin the resolution limitation > 400? try limit to 2400 to have impression of ocr quality on high res 
+	//linked to js boundary to indicate ocr activity on html page resolution slider
+		//  includes/openDias.acquire.js
+    if(request_resolution >= 300 && request_resolution <= 2400) {
 
       o_log(DEBUGM, "attempting OCR");
       updateScanProgress(uuid, SCAN_PERFORMING_OCR, 10);
