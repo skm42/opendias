@@ -169,7 +169,8 @@ extern char *getDocDetail (char *documentId) {
 
   // Build Response
   //
-  returnXMLtemplate = o_strdup("<?xml version='1.0' encoding='iso-8859-1'?>\
+  //use UTF-8 encoding to be inline with webpage encoding. returnXMLtemplate = o_strdup("<?xml version='1.0' encoding='iso-8859-1'?>
+  returnXMLtemplate = o_strdup("<?xml version='1.0' encoding='UTF-8'?>\
 <Response>\
  <DocDetail>\
   <docid>%s</docid>\
