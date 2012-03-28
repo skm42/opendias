@@ -39,6 +39,7 @@
 
 struct MHD_Daemon *httpdaemon;
 int pidFilehandle;
+int turnToDaemon=1;
 
 int setup (char *configFile) {
 
@@ -131,7 +132,9 @@ extern void server_shutdown() {
   sane_exit();
 
   o_log(DEBUGM, "httpd stop");
-  MHD_stop_daemon (httpdaemon);
+	if ( turnToDaemon == 1 ) {
+	  MHD_stop_daemon (httpdaemon);
+	}
 
   o_log(DEBUGM, "database close");
   close_db();
@@ -273,7 +276,8 @@ void usage(void) {
 int main (int argc, char **argv) {
 
   char *configFile = NULL;
-  int turnToDaemon = 1;
+	
+  	//declare globally to ensure graceful shutdown if the server is not running as daemon     int turnToDaemon = 1;
   int c;
 
   while ((c = getopt(argc, argv, "dc:ih")) != EOF) {

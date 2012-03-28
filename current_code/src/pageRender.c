@@ -216,6 +216,9 @@ extern char *getScannerList() {
       if(resolution <= minRes)
         resolution = minRes;
 
+	//give a try to set scan resolution
+	resolution = 600;	
+
       o_log(DEBUGM, "sane_cancel");
       sane_cancel(openDeviceHandle);
 

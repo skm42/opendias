@@ -22,6 +22,7 @@
 #include <time.h>
 #include <unistd.h> // for getpid & readlink
 #include <sys/stat.h> // for mkdir
+#include <sys/wait.h> // for waitpid
 #include <ctype.h>
 #include "main.h"
 #include "debug.h"

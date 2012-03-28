@@ -651,7 +651,6 @@ extern void *doScanningOperation(void *uuid) {
 
   o_log(DEBUGM, "doScanningOperation: sane initialized uuid(%s)",(char *)uuid);
   // Open the device
-  o_log(DEBUGM, "sane_open");
   updateScanProgress(uuid, SCAN_WAITING_ON_SCANNER, 0);
   o_log(DEBUGM, "doScanningOperation: updateScanProgess done");
   devName = getScanParam(uuid, SCAN_PARAM_DEVNAME);

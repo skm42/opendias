@@ -19,7 +19,7 @@
 #ifndef OPENDIASCONFIG
 #define OPENDIASCONFIG
 
-#define DEFAULT_CONF_FILE "/etc/opendias/opendias.conf"
+//#define DEFAULT_CONF_FILE "/etc/opendias/opendias.conf"
 
 int DB_VERSION;
 char *BASE_DIR;

@@ -139,6 +139,7 @@ int main (int argc, char **argv) {
   char *config_value = NULL;
   int c;
 
+
   while ((c = getopt(argc, argv, "c:hs:v:")) != EOF) {
     switch (c) {
       case 'c':
@@ -157,7 +158,6 @@ int main (int argc, char **argv) {
       default: usage();
     }
   }
-
   // If we can't do a correct setup, then exit (weve already given a reason)
   if(setup (configFile))
     return 1;
