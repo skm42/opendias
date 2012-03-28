@@ -761,21 +761,35 @@ extern int answer_to_connection (void *cls, struct MHD_Connection *connection,
         }
 
         else if ( action && 0 == strcmp(action, "uploadfile") ) {
-          o_log(INFORMATION, "Processing request for: uploadfile");
-          if ( accessPrivs.add_import == 0 )
-            content = o_strdup(noaccessxml);
-          else if ( validate( con_info->post_data, action ) ) 
-            content = o_strdup(errorxml);
-          else {
-            char *filename = getPostData(con_info->post_data, "uploadfile");
-            char *ftype = getPostData(con_info->post_data, "ftype");
-            content = uploadfile(filename, ftype); // import_doc.c
-            if(content == (void *)NULL)
-              content = o_strdup(servererrorpage);
-          }
+          o_log(DEBUGM, "Processing request for: uploadfile");
+          if ( accessPrivs.add_import == 0 ) {
+          	o_log(DEBUGM, "uploadfile accessPrivs if");
+            	content = o_strdup(noaccessxml);
+	  } else { 
+          	o_log(DEBUGM, "uploadfile accessPrivs not if postdata %x",con_info->post_data);
+		if ( validate( con_info->post_data, action ) ) {
+          		o_log(DEBUGM, "uploadfile validate");
+            		content = o_strdup(errorxml);
+	   	} else {
+			o_log(DEBUGM,"permissions ok");
+		    char *filename = getPostData(con_info->post_data, "uploadfile");
+		    char *ftype = getPostData(con_info->post_data, "ftype");
+		    if ( ftype == NULL ) {
+			o_log(ERROR,"ftype missing in request");
+			content = o_printf("");
+		    }  else {
+		    
+			o_log(DEBUGM,"retrieving upload data: filename(%s), ftype(%s)",filename,ftype);
+			content = uploadfile(filename, ftype); // import_doc.c
+			o_log(DEBUGM,"upload data retrieved");
+			if(content == (void *)NULL)
+				content = o_strdup(servererrorpage);
+			}
+		}
           mimetype = MIMETYPE_HTML;
           size = strlen(content);
-        }
+		o_log(DEBUGM,"uploadfile request processed");
+        }}
 
         else if ( action && 0 == strcmp(action, "getAccessDetails") ) {
           o_log(DEBUGM, "Processing request for: getAccessDetails");
