@@ -1,3 +1,43 @@
+ 0.7.3.1  This version works for a quick and dirty build of a debian package 
+	for amd64 architecture. Check the known buglist in the webcontent for known
+	bugs of this version. 
+
+
+	Remark: A major change compared to the version 0.7.3 of opendias 
+	is the capability to run the opendias daemon as a non root user. The 
+	build process is not yet flexible enought to handle different target 
+	users. Currently the username intended to execute the daemon is named 
+	opendias. It is under the reponsibility of the administrator to create 
+	this user before installation of the package, otherwise the daemon
+	is intended to be executed by root, but the rc script openDIAS does 
+	not reflect that matter and must be changed manaully in a proper way.
+
+	Find below a list of changes compared to version 0.7.3.
+	+ vprintf issue in i_printf solved
+	+ missing / in root request url fixed
+	+ change reasonable resolution limitation for ocr
+	+ added document attribute document hardcopy kept
+	+ added some debugging o_log calls
+	+ fixed segmentation violation at debug mode shutdown
+	+ fixed documentation encoding problem in docDetails page ocr text. UTF-8 out 
+	  of the database was not correctly rendered in response rendered in doc_editor.c
+	+ changed evaluation of highest resolution supported by the scanner attached. 
+	  sod->constraint.word_list cannot be assumed ordered. 
+	+ recodniced TODO: resolution selection sliders shall only offer resolution 
+	  steps which are supported by the appropriate scanner device.
+	+ added flexible paths to autobuild
+	+ changed requirement for opendias to be executed as root, which is still possible. 
+	  The openDIAS user "opendias" is expected by the rc-script. The build process needs 
+	  to be enhenced to keep the openDIAS user flexible. See remark above.
+	+ added buglist to the webcontent to show known bugs 
+	+ added non flexible rc script derived from ubuntu rc-script as template
+	+ added DESTDIR support to automake to ease debian package build
+	+ added control file of the deb creation process.
+	Steve Meifert (skm42@users.sf.net)
+ ------------------------------------------------------------------------
+ r1 | computer | 2012-03-10 17:04:36 +0100 (Sat, 10 Mar 2012) | 1 line
+ ------------------------------------------------------------------------
+
  0.7.3  Issue #9 - Scanners with 'word_list' resolutions
         Fix spinner viability on searching for scanners.
         Issue #10 - Scan images display is not permission checked
