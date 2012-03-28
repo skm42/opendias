@@ -757,13 +757,14 @@ extern void *doScanningOperation(void *uuid) {
 
   // Write the image to disk now
   //
-  tmpFile = o_printf("/tmp/%s.pnm", uuid);
+  tmpFile = o_printf("%s/%s.pnm", TMPLOCATION,uuid);
   if ((scanOutFile = fopen(tmpFile, "w")) == NULL)
     o_log(ERROR, "could not open file for output");
   fprintf (scanOutFile, "P5\n# SANE data follows\n%d %d\n%d\n", 
     pars.pixels_per_line, pars.lines,
     (pars.depth <= 8) ? 255 : 65535);
   size = fwrite (raw_image, (size_t)pars.pixels_per_line, (size_t)pars.lines, scanOutFile);
+	// TODO ???
   if((int)size < (pars.pixels_per_line * pars.lines) )
     o_log(ERROR, "Unable to write the entire image to disk.");
   fclose(scanOutFile);

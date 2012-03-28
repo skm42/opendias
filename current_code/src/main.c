@@ -35,6 +35,7 @@
 #include "utils.h"
 #include "debug.h"
 #include "web_handler.h"
+#include "dirconfig.h"
 
 struct MHD_Daemon *httpdaemon;
 int pidFilehandle;
@@ -50,7 +51,8 @@ int setup (char *configFile) {
   VERBOSITY = DEBUGM;
   DB_VERSION = 6;
   PORT = 8988;
-  LOG_DIR = o_strdup("/var/log/opendias");
+  LOG_DIR = o_printf("%s",LOG_LOCATION);
+
 
   // Get 'DB' location
   if (configFile != NULL)
@@ -96,11 +98,16 @@ int setup (char *configFile) {
       else if ( 0 == strcmp(config_option, "port") ) {
         PORT = (unsigned short) atoi(config_value);
       }
-      else if ( 0 == strcmp(config_option, "log_directory") ) {
-        free(LOG_DIR);
-        LOG_DIR = o_strdup(config_value);
-        createDir_ifRequired(LOG_DIR);
-      }
+      //I don't see the rationale behind as this is the only location 
+      // in the source in which the log_directory row of the table config is 
+      // used. The database shall not change the log_directory location,
+      // as long as the log location is defined at built time.
+      // remove it from the database initialization in openDIAS.sqlite3.dmp.v4.sql
+      //else if ( 0 == strcmp(config_option, "log_directory") ) {
+      //  free(LOG_DIR);
+      //  LOG_DIR = o_strdup(config_value);
+      //  createDir_ifRequired(LOG_DIR);
+      //}
       free(config_option);
       free(config_value);
     } while ( nextRow( rSet ) );
@@ -288,11 +295,12 @@ int main (int argc, char **argv) {
   if(turnToDaemon==1) {
     // Turn into a meamon and write the pid file.
     o_log(INFORMATION, "Running in daemon mode.");
-    daemonize("/tmp/", "/var/run/opendias.pid");
+    daemonize("/tmp/", PIDFILE);
   }
   else {
     o_log(INFORMATION, "Running in interactive mode.");
   }
+
 
   if(setup (configFile))
     return 1;

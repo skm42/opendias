@@ -30,6 +30,7 @@
 #include "read_odf.h"
 #include "utils.h"
 #include "debug.h"
+#include "dirconfig.h"
 
 
 struct mydata {
@@ -189,10 +190,12 @@ extern void get_odf_Thumb (const char *filename) {
 
   size = getEntry(filename, "Thumbnails/thumbnail.png", &imageData);
   if(size > 0) {
-    int tmpFile = open("/tmp/tmpImg.png", O_CREAT|O_WRONLY, 775);
+	char *tmp=o_printf("%s/tmpImg.png",TMPLOCATION);
+    int tmpFile = open(tmp, O_CREAT|O_WRONLY, 775);
     if((ssize_t)size != write(tmpFile, imageData, size) )
       o_log(ERROR, "Could not write all data.");;
     close(tmpFile);
+	free(tmp);
   }
 
 }

@@ -37,6 +37,7 @@
 #include "doc_editor.h"
 #include "import_doc.h"
 #include "simpleLinkedList.h"
+#include "dirconfig.h"
 
 char *busypage = "<html><body>This server is busy, please try again later.</body></html>";
 char *servererrorpage = "<html><body>An internal server error has occured.</body></html>";
@@ -217,7 +218,7 @@ extern void request_completed (void *cls, struct MHD_Connection *connection, voi
     }
     uploadedFileName = getPostData(con_info->post_data, "uploadfile");
     if(uploadedFileName != NULL) {
-      filename = o_printf("/tmp/%s.dat", uploadedFileName);
+      filename = o_printf("%s/%s.dat", TMPLOCATION, uploadedFileName);
       unlink(filename); // Remove any uploaded files
       free(filename);
     }

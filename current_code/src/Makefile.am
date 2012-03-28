@@ -11,12 +11,23 @@ AM_CFLAGS =\
 	 -Wall
 
 bin_PROGRAMS = opendias opendiasconfig
+BUILT_SOURCES = dirconfig.h
+CLEANFILES = dirconfig.h
+
+dirconfig.h:
+	echo "#define LOG_LOCATION \"$(localstatedir)/log/opendias\"" > dirconfig.h
+	echo "#define DOCUMENT_ROOT \"$(datadir)/opendias/webcontent\"" >> dirconfig.h
+	echo "#define DEFAULT_CONF_FILE \"$(sysconfdir)/opendias/opendias.conf\"" >> dirconfig.h
+	echo "#define PIDFILE \"$(localstatedir)/run/opendias/opendias.pid\"" >> dirconfig.h
+	echo "#define PDF2TXTPROG \"/usr/bin/pdftotext\"" >> dirconfig.h
+	echo "#define TMPLOCATION \"$(localstatedir)/tmp\"" >> dirconfig.h
 
 opendiasconfig_SOURCES = \
 	db.c    \
 	db.h    \
 	debug.c    \
 	debug.h    \
+	dirconfig.h \
 	utils.c    \
 	utils.h    \
         opendiasconfig.h \
@@ -33,6 +44,7 @@ opendias_SOURCES = \
 	db.h    \
 	debug.c    \
 	debug.h    \
+	dirconfig.h \
 	doc_editor.c    \
 	doc_editor.h    \
 	web_handler.c    \

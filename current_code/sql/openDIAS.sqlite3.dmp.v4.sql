@@ -4,10 +4,8 @@ INSERT INTO tags VALUES(25,'Wages');
 UPDATE tags SET tagname='Morgage' WHERE tagid=13;
 
 INSERT INTO config VALUES ("log_verbosity",3);
-INSERT INTO config VALUES ("scan_directory","/var/lib/opendias");
 INSERT INTO config VALUES ("show_all_available",1);
 INSERT INTO config VALUES ("port",8988);
-INSERT INTO config VALUES ("log_directory","/var/log/opendias");
 
 CREATE TABLE access_role (
   role INTEGER PRIMARY KEY, 

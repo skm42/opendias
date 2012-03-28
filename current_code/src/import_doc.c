@@ -22,6 +22,7 @@
 #include "dbaccess.h"
 #include "utils.h"
 #include "debug.h"
+#include "dirconfig.h"
 #ifdef CAN_READODF
 #include "read_odf.h"
 #endif // CAN_READODF //
@@ -62,7 +63,7 @@ extern char *uploadfile(char *filename, char *ftype) {
   }
   else if(0==strcmp("ODF", ftype)) {
     itype = ODF_FILETYPE;
-    tmp = o_printf("/tmp/%s.dat", filename);
+    tmp = o_printf("%s/%s.dat", TMPLOCATION,filename);
 #ifdef CAN_READODF
     ocrText = get_odf_Text(tmp); // read_odf.c 
 #endif // CAN_READODF //
@@ -89,7 +90,7 @@ extern char *uploadfile(char *filename, char *ftype) {
   to_name = o_printf("%s/scans/%s", BASE_DIR, docid);
   addFileExt(&to_name, itype);
 
-  tmp = o_printf("/tmp/%s.dat", filename);
+  tmp = o_printf("%s/%s.dat", TMPLOCATION, filename);
 
   fcopy(tmp, to_name);
   free(tmp);

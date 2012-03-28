@@ -20,6 +20,9 @@
 #define UTILS
 
 #include <stdlib.h>
+#include <dirconfig.h>
+
+#define SYNC 0
 
 struct dateParts {
   char *year;
