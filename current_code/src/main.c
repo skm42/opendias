@@ -56,10 +56,12 @@ int setup (char *configFile) {
 
 
   // Get 'DB' location
-  if (configFile != NULL)
+  if (configFile != NULL) {
     conf = configFile;
-  else
+  } else {
     conf = DEFAULT_CONF_FILE;
+  }
+
 
   o_log(INFORMATION, "Using config file: %s", conf);
   if( 0 == load_file_to_memory(conf, &location) ) {
@@ -213,7 +215,7 @@ void daemonize(char *rundir, char *pidfile) {
  
     /* Child continues */
 
-    (void)umask(027); /* Set file permissions 750 */
+    (void)umask(027); /* Set file permissions 750 ? that's 640 but that's fine */
  
     /* Get a new process group */
     sid = setsid();
