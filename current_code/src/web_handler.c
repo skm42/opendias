@@ -65,10 +65,20 @@ static size_t getFromFile_fullPath(const char *url, char **data) {
 static size_t getFromFile(const char *url, char **data) {
 	o_log(DEBUGM,"enterting getFromFile: ");
 
+	char *cUrl;
+
+	if ( strlen(url) == 0 ) {
+		cUrl=o_printf("/");
+	} else {
+		cUrl=o_printf("%s",url);
+	}
+	
   // Build Document Root
-  char *htmlFrag = o_printf("%s/opendias/webcontent%s", PACKAGE_DATA_DIR, url);
+  //char *htmlFrag = o_printf("%s/opendias/webcontent%s", PACKAGE_DATA_DIR, url);
+  char *htmlFrag = o_printf("%s/opendias/webcontent%s", PACKAGE_DATA_DIR,cUrl);
 
   size_t size = getFromFile_fullPath(htmlFrag, data);
+  o_log(DEBUGM,"leaving getFromFile: url(%s) cUrl(%s) htmlFrag(%s)",url,cUrl,htmlFrag);	
   free(htmlFrag);
   return size;
 }
