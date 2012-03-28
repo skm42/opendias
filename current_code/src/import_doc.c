@@ -29,6 +29,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/stat.h>
 
 #ifdef CAN_OCR
 #include "imageProcessing.h"
@@ -43,20 +44,42 @@ extern char *uploadfile(char *filename, char *ftype) {
   o_log(DEBUGM, "Saving doc import record");
 
   if(0==strcmp("PDF", ftype)) {
-    int s;
+    //int s;
     itype = PDF_FILETYPE;
 
     // REPLACE ME WITH SOME LIB METHOD TO DO THE SAME
-    // 
-    tmp = o_printf("/usr/bin/pdftotext /tmp/%s.dat /tmp/%s.txt", filename, filename);
-    s = system(tmp);
-    free(tmp);
-    // 
+    //  that's definetly required :-)
+	
+    //tmp = o_printf("/usr/bin/pdftotext /tmp/%s.dat /tmp/%s.txt", filename, filename);
+	int r;
+	char *i_arg=o_printf("%s/%s.dat",TMPLOCATION,filename);
+	char *o_arg=o_printf("%s/%s.txt",TMPLOCATION,filename);
 
-    tmp = o_printf("/tmp/%s.txt", filename);
-    if( ( s != 0 ) || ( 0 == load_file_to_memory(tmp, &ocrText) ) )
+	struct stat stat_s;	
+
+	if (stat(i_arg,&stat_s) != 0 ) {
+		o_log(ERROR,"uploadfile %s: input missing %s",PDF2TXTPROG,i_arg);
+		r=1;
+	} else {
+	    //orig s = system(tmp);
+	    //orig free(tmp);
+	    // 
+		o_log(DEBUGM,"uploaded file stat(size=%i) name %s",(int)stat_s.st_size,i_arg);
+		r=o_exec(SYNC,2,PDF2TXTPROG,i_arg,o_arg);
+		if ( r != 0 ) {
+			o_log(ERROR,"uploadfile: failed to exec %s %s %s",PDF2TXTPROG,i_arg,o_arg);
+				//TODO think about consequences 
+		} else {
+			o_log(DEBUGM,"uploadfile: execution of %s successfully done",PDF2TXTPROG);
+		}
+	}
+    tmp = o_printf("%s/%s.txt", TMPLOCATION, filename);
+    if( ( r != 0 ) || ( 0 == load_file_to_memory(tmp, &ocrText) ) )
       ocrText = o_strdup("--unable to read the PDF file--");
+
     free(tmp);
+	free(i_arg);
+	free(o_arg);
     replace(ocrText, "\f", ".");
 
     // --------------------------------------

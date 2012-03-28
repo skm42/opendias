@@ -353,3 +353,53 @@ extern void o_concatf(char **mainStr, const char *fmt, ...) {
 
 }
 
+extern int o_exec(int mode, int argc, const char *path,...) {
+/*Description: execute the command provided as arglist. The arglist is used to
+ to build exec's argv limited by argc. The mode parameter specifies how the command is to be 
+ executed. 
+ pararm1: int mode = currently only SYNC 
+ pararm2->: char * argv defintion
+ return: return value of the command executed
+*/
+	va_list inargs;
+	char *str;
+	int n;
+
+	char *argv[argc+2];	
+	argv[0]=(char*)path;
+	
+	va_start(inargs, path);
+
+	for(n=0; n<argc; n++) {
+		str=va_arg(inargs,char*);
+		argv[n+1]=str;
+	}	
+	o_log(DEBUGM,"o_exec %s argv prepared",path);
+
+	for (n=0; n<=argc; n++) {
+		o_log(DEBUGM,"o_exec: argv %d = %s",n,argv[n]);
+	}
+	
+	argv[argc+1]=NULL;
+	pid_t child;
+	int rval=0;
+	
+	if ( (child=fork()) == 0 ) {
+		if ( execv(path,argv) == -1 ) {
+			o_log(ERROR,"execv failed %s",path);
+			exit(-1);
+		}
+		exit(42);
+	} else {
+		if (child < 0 ) {
+			o_log(ERROR,"fork error");
+			return(-1);
+		} else {
+			waitpid(child,&rval,0);	
+			o_log(DEBUGM,"child[%d] of %s terminatd with rval %d",child,path,WEXITSTATUS(rval));
+			return(WEXITSTATUS(rval));
+		}
+	}	
+
+	return(-1); 
+}
