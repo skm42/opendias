@@ -43,6 +43,7 @@
 #include "utils.h"
 #include "debug.h"
 #include "web_handler.h"
+#include "dirconfig.h"
 
 #include "main.h"
 
@@ -62,7 +63,7 @@ int setup (char *configFile) {
   VERBOSITY = DEBUGM;
   DB_VERSION = 6;
   PORT = 8988; // Default - but overridden by config settings before port is opened
-  LOG_DIR = o_strdup("/var/log/opendias");
+  LOG_DIR = o_strdup(LOG_LOCATION);
   startedServices.log = 1;
   o_log(INFORMATION, "Setting default log verbosity to %d.", VERBOSITY);
 
@@ -391,7 +392,7 @@ int main (int argc, char **argv) {
   // Open logs, read the config file, start the database, etc...
   if( setup(configFile) == 1 ) {
     if( turnToDaemon!=1 ) 
-      printf("Could not startup. Check /var/log/opendias/ for the reason.\n");
+      printf("Could not startup. Check %s for the reason.\n",LOG_LOCATION);
     return 1;
   }
 

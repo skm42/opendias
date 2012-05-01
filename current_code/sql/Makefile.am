@@ -9,8 +9,13 @@ sql_DATA = \
 	openDIAS.sqlite3.dmp.v5.sql \
 	openDIAS.sqlite3.dmp.v6.sql
 
+openDIAS.sqlite3.dmp.v4.sql:
+	cat openDIAS.sqlite3.dmp.v4.sql.template | sed 's#LOG_LOCATION#$(localstatedir)/log/opendias#' > openDIAS.sqlite3.dmp.v4.sql
+
 sqldir = \
 	$(pkgdatadir)
+
+CLEANFILES = openDIAS.sqlite3.dmp.v4.sql
 
 EXTRA_DIST = \
 	$(sql_DATA)

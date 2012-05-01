@@ -103,3 +103,5 @@ current_code/webcontent/Makefile
 current_code/webcontent/Makefile.in
 current_code/webcontent/style/Makefile
 current_code/webcontent/style/Makefile.in
+current_code/src/dirconfig.h
+current_code/sql/openDIAS.sqlite3.dmp.v4.sql

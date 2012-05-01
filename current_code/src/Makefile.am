@@ -11,6 +11,12 @@ AM_CFLAGS =\
 	 -Wall
 
 bin_PROGRAMS = opendias opendiasconfig
+BUILT_SOURCES = dirconfig.h
+CLEANFILES = dirconfig.h
+
+dirconfig.h:
+	echo "#define LOG_LOCATION \"$(localstatedir)/log/opendias\"" > dirconfig.h
+	echo "#define DEFAULT_CONF_FILE \"$(sysconfdir)/opendias/opendias.conf\"" >> dirconfig.h
 
 opendiasconfig_SOURCES = \
 	db.c    \
