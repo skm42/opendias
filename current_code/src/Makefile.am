@@ -17,6 +17,8 @@ CLEANFILES = dirconfig.h
 dirconfig.h:
 	echo "#define LOG_LOCATION \"$(localstatedir)/log/opendias\"" > dirconfig.h
 	echo "#define DEFAULT_CONF_FILE \"$(sysconfdir)/opendias/opendias.conf\"" >> dirconfig.h
+	echo "#define SANE_SOCKET \"$(localstatedir)/run/opendias/saneSocket\"" >> dirconfig.h
+	echo "#define PID_FILE \"$(localstatedir)/run/opendias/opendias.pid\"" >> dirconfig.h
 
 opendiasconfig_SOURCES = \
 	db.c    \

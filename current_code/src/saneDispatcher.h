@@ -16,10 +16,13 @@
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "dirconfig.h"
+
 #ifndef SANEDISPATCHER
 #define SANEDISPATCHER
 
-#include "config.h"
+#define ADDRESS SANE_SOCKET
+//#define ADDRESS "/var/run/saneCommandSocket"
 
 #ifdef CAN_SCAN
 #define ADDRESS "/var/run/saneCommandSocket"

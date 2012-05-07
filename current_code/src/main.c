@@ -381,7 +381,7 @@ int main (int argc, char **argv) {
   if( turnToDaemon==1 ) {
     // Turn into a meamon and write the pid file.
     o_log(INFORMATION, "Running in daemon mode.");
-    daemonize("/tmp/", "/var/run/opendias.pid");
+    daemonize("/tmp/", PID_FILE);
     startedServices.pid = 1;
   }
   else {
