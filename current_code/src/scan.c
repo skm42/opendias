@@ -331,7 +331,11 @@ int setOptions( char *uuid, SANE_Handle *openDeviceHandle, int *request_resoluti
 
         else if (strcmp (sod->name, "custom-gamma") == 0) {
           v_b = SANE_FALSE;
-          status = control_option(openDeviceHandle, sod, option, SANE_ACTION_SET_VALUE, &v_b, &paramSetRet);
+	  
+      		o_log(WARNING, "scan.c: Skip sod->name custom-gamma. results in segmentation violation. Reason not yet known");
+
+          //status = control_option(openDeviceHandle, sod, option, SANE_ACTION_SET_VALUE, &v_b, &paramSetRet);
+	  status=SANE_STATUS_GOOD;
           if(status != SANE_STATUS_GOOD) {
             handleSaneErrors("Cannot set no to custonmer-gamma", status, paramSetRet);
             updateScanProgress(uuid, SCAN_ERRO_FROM_SCANNER, status);
