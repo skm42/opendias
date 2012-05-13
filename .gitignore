@@ -108,3 +108,4 @@ current_code/sql/openDIAS.sqlite3.dmp.v4.sql
 current_code/scripts/Makefile
 current_code/scripts/Makefile.in
 current_code/scripts/openDIAS
+current_code/src/read_odf.o
