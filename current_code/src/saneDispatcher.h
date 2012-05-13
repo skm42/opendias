@@ -25,7 +25,6 @@
 //#define ADDRESS "/var/run/saneCommandSocket"
 
 #ifdef CAN_SCAN
-#define ADDRESS "/var/run/saneCommandSocket"
 extern void dispatch_sane_work(int);
 extern char *send_command(char *);
 extern void freeSaneCache(void);
