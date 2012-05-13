@@ -175,6 +175,15 @@ else
 fi
 
 
+dnl
+dnl Define variable OPENDIAS_USER (user which will execute opendias)
+dnl
+if test "$OPENDIAS_USER" != ""; then
+	OPENDIAS_USER=$OPENDIAS_USER
+else
+	OPENDIAS_USER="opendias"
+fi
+AC_SUBST(OPENDIAS_USER)
 
 
 dnl
@@ -185,6 +194,7 @@ AC_OUTPUT([
 Makefile
 src/Makefile
 sql/Makefile
+scripts/Makefile
 webcontent/Makefile
 webcontent/style/Makefile
 webcontent/includes/Makefile
