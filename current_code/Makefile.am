@@ -15,14 +15,12 @@ install-exec-hook:
 	test ! -e $(DESTDIR)/$(localstatedir)/run/opendias && mkdir -p $(DESTDIR)/$(localstatedir)/run/opendias || echo Lib directory already exists
 	test ! -e $(DESTDIR)/$(sysconfdir)/opendias && mkdir -p $(DESTDIR)/$(sysconfdir)/opendias || echo openDIAS config directory already exists
 	test ! -e $(DESTDIR)/$(sysconfdir)/opendias/opendias.conf && echo $(localstatedir)/lib/opendias >> $(DESTDIR)/$(sysconfdir)/opendias/opendias.conf || echo config file already exists
-	groups $(OPENDIAS_USER) >/dev/null || (echo "$(OPENDIAS_USER) does not exits. trying creation" && adduser --disabled-password --gecos 'opendias User' $(OPENDIAS_USER) || echo "failed to create $(OPENDIAS_USER)")
-	groups $(OPENDIAS_USER) >/dev/null || (echo "$(OPENDIAS_USER) non existant aborting installation" && exit 1)
-	chown $(OPENDIAS_USER) $(DESTDIR)/$(localstatedir)/log/opendias || (echo "failed to adjust log directory ownership. aborting" && exit 1)
-	chown $(OPENDIAS_USER) $(DESTDIR)/$(localstatedir)/lib/opendias || (echo "failed to adjust db directory ownership. aborting" && exit 1)
-	chown $(OPENDIAS_USER) $(DESTDIR)/$(localstatedir)/run/opendias || (echo "failed to adjust run directory ownership. aborting" && exit 1)
-	chgrp $(OPENDIAS_USER) $(DESTDIR)/$(localstatedir)/log/opendias || (echo "failed to adjust log directory ownership. aborting" && exit 1)
-	chgrp $(OPENDIAS_USER) $(DESTDIR)/$(localstatedir)/lib/opendias || (echo "failed to adjust db directory ownership. aborting" && exit 1)
-	chgrp $(OPENDIAS_USER) $(DESTDIR)/$(localstatedir)/run/opendias || (echo "failed to adjust run directory ownership. aborting" && exit 1)
+	chown $(OPENDIAS_USER) $(DESTDIR)/$(localstatedir)/log/opendias || (echo "WARNING: failed to adjust log directory ownership. aborting" )
+	chown $(OPENDIAS_USER) $(DESTDIR)/$(localstatedir)/lib/opendias || (echo "WARNING: failed to adjust db directory ownership. aborting" )
+	chown $(OPENDIAS_USER) $(DESTDIR)/$(localstatedir)/run/opendias || (echo "WARNING: failed to adjust run directory ownership. aborting" )
+	chgrp $(OPENDIAS_USER) $(DESTDIR)/$(localstatedir)/log/opendias || (echo "WARNING: failed to adjust log directory ownership. aborting" )
+	chgrp $(OPENDIAS_USER) $(DESTDIR)/$(localstatedir)/lib/opendias || (echo "WARNING: failed to adjust db directory ownership. aborting" )
+	chgrp $(OPENDIAS_USER) $(DESTDIR)/$(localstatedir)/run/opendias || (echo "WARNING: failed to adjust run directory ownership. aborting" )
 
 		
 
