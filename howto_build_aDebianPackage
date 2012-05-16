@@ -1,3 +1,6 @@
+#before creating the tar ensure configure script is created in checkout 
+autoreconf -iv
+
 #setup environment to reflect maintainer
 export DEBFULLNAME="Steve Meifert"
 export DEBEMAIL="skm42@gmx.de"
