@@ -66,6 +66,8 @@ $(document).ready(function() {
                                   });
            }
 
+
+	   //JPG and scan data	
            else if( $(data).find('DocDetail').find('type').text() == "2" || $(data).find('DocDetail').find('type').text() == "4") {
              // Set images and default width
              for( x=1 ; x<=parseInt($(data).find('DocDetail').find('pages').text()) ; x++ ) {

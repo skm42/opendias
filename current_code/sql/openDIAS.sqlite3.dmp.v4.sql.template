@@ -12,7 +12,7 @@ INSERT INTO config VALUES ("log_verbosity",3);
 INSERT INTO config VALUES ("scan_directory","/var/lib/opendias");
 INSERT INTO config VALUES ("show_all_available",1);
 INSERT INTO config VALUES ("port",8988);
-INSERT INTO config VALUES ("log_directory","/var/log/opendias");
+INSERT INTO config VALUES ("log_directory","LOG_LOCATION");
 
 CREATE TABLE access_role (
   role INTEGER PRIMARY KEY, 

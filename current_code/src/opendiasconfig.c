@@ -33,6 +33,7 @@
 #include "db.h" 
 #include "utils.h"
 #include "debug.h"
+#include "dirconfig.h"
 
 
 int setup (char *configFile) {
@@ -45,7 +46,7 @@ int setup (char *configFile) {
   // Defaults
   VERBOSITY = DEBUGM;
   DB_VERSION = 4;
-  LOG_DIR = o_strdup("/var/log/opendias");
+  LOG_DIR = o_strdup(LOG_LOCATION);
 
   // Get 'DB' location
   if (configFile != NULL)

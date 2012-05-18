@@ -1,0 +1,40 @@
+#before creating the tar ensure configure script is created in checkout 
+autoreconf -iv
+
+#setup environment to reflect maintainer
+export DEBFULLNAME="Steve Meifert"
+export DEBEMAIL="skm42@gmx.de"
+
+#create symlink to current_code including release version
+ln -s current_code opendias-0.8
+
+#create compressed tar of it dereferencing the symlink created before
+tar chzvf ../../debian/opendias-0.8.tar.gz opendias-0.8
+
+#continue work out of gitRepository 
+cd ../../debian
+
+#uncompress the tar created
+tar xzf opendias-0.8.tar.gz
+
+#change into extracted release directory
+cd opendias-0.8
+
+#prepare debian-tree and reference (single binary)
+dh_make -f ../opendias-0.8.tar.gz -c gpl2
+
+#[A xor B]
+#[A] check control and postinst for relevant diff (dist upgrade) and merge if required
+for f in `ls debianBuild/`
+do
+	diff debianBuild/$f debian/$f
+done
+
+#[B] if no diff is expected just copy control and postinst into debian directory
+cp debianBuild/* debian/
+
+#build source package to skip signing -us -uc 
+dpkg-buildpackage -S 
+
+#build binary package (uses fakeroot automatically) to skip signing -us -uc 
+dpkg-buildpackage

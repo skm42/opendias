@@ -1,0 +1,27 @@
+if [ "$1" = "purge" ] ; then
+	rm /var/log/opendias/opendias.log
+	if [ -f /var/backups/opendias.lib.backup.tar ]
+	then
+		echo "/var/backups/opendias.lib.backup.tar.gz exists. purge aborted"
+		exit 1
+	fi
+	cd /var/lib/ 
+	if [ $? -ne 0 ] ; then
+		echo "backup creation failed. purge aborted"
+		exit 1
+	fi
+		
+	tar czf /var/backups/opendias.lib.backup.tar.gz opendias
+	rm -r opendias/*
+	
+	deluser --remove-home opendias
+	exit $?
+
+fi
+
+
+# Automatically added by dh_installinit
+if [ "$1" = "purge" ] ; then
+	update-rc.d openDIAS remove >/dev/null
+fi
+# End automatically added section
