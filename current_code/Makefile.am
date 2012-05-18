@@ -15,13 +15,6 @@ install-exec-hook:
 	test ! -e $(DESTDIR)/$(localstatedir)/run/opendias && mkdir -p $(DESTDIR)/$(localstatedir)/run/opendias || echo Lib directory already exists
 	test ! -e $(DESTDIR)/$(sysconfdir)/opendias && mkdir -p $(DESTDIR)/$(sysconfdir)/opendias || echo openDIAS config directory already exists
 	test ! -e $(DESTDIR)/$(sysconfdir)/opendias/opendias.conf && echo $(localstatedir)/lib/opendias >> $(DESTDIR)/$(sysconfdir)/opendias/opendias.conf || echo config file already exists
-	chown $(OPENDIAS_USER) $(DESTDIR)/$(localstatedir)/log/opendias || (echo "WARNING: failed to adjust log directory ownership. aborting" )
-	chown $(OPENDIAS_USER) $(DESTDIR)/$(localstatedir)/lib/opendias || (echo "WARNING: failed to adjust db directory ownership. aborting" )
-	chown $(OPENDIAS_USER) $(DESTDIR)/$(localstatedir)/run/opendias || (echo "WARNING: failed to adjust run directory ownership. aborting" )
-	chgrp $(OPENDIAS_USER) $(DESTDIR)/$(localstatedir)/log/opendias || (echo "WARNING: failed to adjust log directory ownership. aborting" )
-	chgrp $(OPENDIAS_USER) $(DESTDIR)/$(localstatedir)/lib/opendias || (echo "WARNING: failed to adjust db directory ownership. aborting" )
-	chgrp $(OPENDIAS_USER) $(DESTDIR)/$(localstatedir)/run/opendias || (echo "WARNING: failed to adjust run directory ownership. aborting" )
-
 		
 
 ## Copy all the spec files. Of cource, only one is actually used.
