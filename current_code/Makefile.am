@@ -1,7 +1,7 @@
 ## Process this file with automake to produce Makefile.in
 ## Created by Anjuta
 
-SUBDIRS = src sql webcontent scripts
+SUBDIRS = src sql webcontent scripts test
 
 opendiasdocdir = ${prefix}/doc/opendias
 
