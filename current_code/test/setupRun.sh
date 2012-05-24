@@ -15,6 +15,24 @@ usage() {
   echo "                 006_scan"
 }
 
+#check env
+if [ -z $OPENDIAS_SRC ] ; then 
+	echo "OPENDIAS_SRC missing"
+	exit 1
+fi
+if [ -z $OPENDIAS_LOGLOCATION ] ; then 
+	echo "OPENDIAS_LOGLOCATION missing"
+	exit 1
+fi
+if [ -z $OPENDIAS_RUNLOCATION ] ; then 
+	echo "OPENDIAS_RUNLOCATION missing"
+	exit 1
+fi
+if [ -z $OPENDIAS_BINLOCATION ] ; then 
+	echo "OPENDIAS_BINLOCATION missing"
+	exit 1
+fi
+
 #
 # Parse off all the parameters
 #
@@ -73,7 +91,7 @@ if [ ! -f "/usr/bin/lcov" ]; then
 fi
 
 # So that everything else does not have to run as root (for testing), reset back later
-for W in /var/run/opendias.pid; do # /var/log/opendias/opendias.log; do
+for W in $OPENDIAS_RUNLOCATION/opendias.pid; do # /var/log/opendias/opendias.log; do
   if [ ! -w "$W" ]; then
     echo $W is not writable. Please correct before running testing.
     exit
@@ -81,17 +99,17 @@ for W in /var/run/opendias.pid; do # /var/log/opendias/opendias.log; do
 done
 
 # Check we dont have a running service atm.
-ps -ef | grep -v "grep" | grep "opendias"
+kill -0 `cat $OPENDIAS_RUNLOCATION/opendias.pid` 2>/dev/null
 if [ "$?" -eq "0" ]; then
   echo "It looks like the opendias service is already running. Please stop before running testing."
   exit
 fi
-rm -f /var/log/opendias/opendias.log
+rm -f $OPENDIAS_LOGLOCATION/opendias.log
 
 #
 # Cleanup
 #
-rm -rf ../src/*.gcda ../src/*.gcno results
+#rm -rf ../src/*.gcda ../src/*.gcno results
 mkdir -p results/coverage/
 mkdir -p results/resultsFiles/
 
@@ -100,11 +118,7 @@ if [ "$NOBUILD" == "" ]; then
   #
   # Compile, so that 'code coverage' analysis reports can be generated.
   #
-  echo Cleaning ...
-  cd ../
-  make clean &> test/results/buildLog2.out
-  cd test
-
+  
   which apt-rdepends > /dev/null
   if [ "$?" -ne "0" ]; then
     echo Could not determine the installed packages. If you\'re on debian based system, install apt-rdepends
@@ -117,53 +131,126 @@ if [ "$NOBUILD" == "" ]; then
   fi
 
   echo Performing code analysis ...
-  cd ../
-  cppcheck --verbose --enable=all --error-exitcode=1 src/ &> test/results/buildLog2.out
+  #cd ../
+  cppcheck --verbose --enable=all --error-exitcode=1 $OPENDIAS_SRC/ &> results/buildLog2.out
   if [ "$?" -ne "0" ]; then
     echo "Code analysis found a problem. Check the buildLog.out for details."
-    cd test
     # unfortunatly bash cannot support "&>>" - yet!
     cat results/buildLog2.out >> results/buildLog.out
     rm results/buildLog2.out
     exit
   fi
-  cd test
+  
   # unfortunatly bash cannot support "&>>" - yet!
   cat results/buildLog2.out >> results/buildLog.out
   rm results/buildLog2.out
 
   # if the file is here, then last time configure was run was in this script
   # so no need to re-do it.
-  echo -n Configuring 
-  cd ../
+	#check using config.log and abort meaningful
+        configure_cmd=`grep '^  \$ ./configure' $OPENDIAS_SRC/config.log`
+	configure_cmdProp=`echo $configure_cmd |sed 's#\\$##'`
+	typeset -i rebuild=0
+
+	echo "last configure with: $configure_cmd"
+	echo $configure_cmd |grep -q '\-\-enable\-werror'
+	if [ $? -ne 0 ] ; then
+		echo "missing --enable-werror"
+		configure_cmdProp=`echo $configure_cmdProp|sed 's#configure #configure --enable-werror#'`
+		rebuild=1
+	fi 
+
+
   if [ "$SKIPCOVERAGE" == "-c" ]; then
     echo " (without coverage) ..."
-    ./configure --enable-werror -C CFLAGS=' -g -O ' &> test/results/buildLog2.out
-  else
+		echo $configure_cmd |grep -q "\-C CFLAGS= \-g \-O "
+		if [ $? -ne 0 ] ; then
+			echo "missing CFLAGS=' -g -O '"
+			configure_cmdProp=`echo $configure_cmdProp|sed "s#\-\-enable\-werror#--enable-werror -C CFLAGS=' -g -O' #"`
+			rebuild=1
+		fi 
+	else 
     echo " (with coverage) ..."
-    ./configure --enable-werror -C CFLAGS=' -g -O --coverage' LIBS='-lgcov' &> test/results/buildLog2.out
-  fi
-  cd test
+		echo $configure_cmd |grep -q "\-C CFLAGS= \-g \-O --coverage"
+		if [ $? -ne 0 ] ; then
+			echo "missing CFLAGS=' -g -O --coverage'"
+			configure_cmdProp=`echo $configure_cmdProp|sed "s#\-\-enable\-werror#--enable-werror -C CFLAGS=' -g -O --coverage' LIBS='-lgcov' #"`
+			rebuild=1
+		fi 
+	fi
+
+	if [ $rebuild -eq 1 ] ; then
+		echo "Rebuilding"
+		echo "reconfiguring $OPENDIAS_SRC with $configure_cmdProp ?"
+	  	read ans
+		if [ $ans == "y" ] ; then
+			echo Cleaning ...
+  			cd $OPENDIAS_SRC || exit 1
+			echo "PWD = $PWD"
+  			make clean > /tmp/buildLog2.out
+		
+			eval $configure_cmdProp >> /tmp/buildLog2.out 2>&1 
+			if [ $? -ne 0 ] ; then
+				cd -
+				cat /tmp/buildLog2.out >> results/buildLog.out
+				echo "configure failed check results/buildLog.out" && exit 1
+			fi
+
+			echo "running make"	
+			make > /tmp/buildLog2.out 2>&1 
+			if [ $? -ne 0 ] ; then
+				cd -
+				cat /tmp/buildLog2.out >> results/buildLog.out
+				echo "make failed check results/buildLog.out" && exit 1
+			fi
+
+			echo "running make install"
+			make install > /tmp/buildLog2.out 2>&1
+			if [ $? -ne 0 ] ; then
+				cd -
+				cat /tmp/buildLog2.out >> results/buildLog.out
+				echo "make install failed check results/buildLog.out" && exit 1
+			fi
+		  
+
+			cd -
+			cat /tmp/buildLog2.out > results/buildLog.out
+			echo "rebuild done"
+		else
+			echo "aboring"
+			exit 
+		fi
+	fi
+  #echo -n Configuring 
+  #cd ../
+  #if [ "$SKIPCOVERAGE" == "-c" ]; then
+  #  echo " (without coverage) ..."
+  #  ./configure --enable-werror -C CFLAGS=' -g -O ' &> test/results/buildLog2.out
+  #else
+  #  echo " (with coverage) ..."
+  #  ./configure --enable-werror -C CFLAGS=' -g -O --coverage' LIBS='-lgcov' &> test/results/buildLog2.out
+  #fi
+  #cd test
   # unfortunatly bash cannot support "&>>" - yet!
-  cat results/buildLog2.out >> results/buildLog.out
-  rm results/buildLog2.out
+  #cat tmp/buildLog2.out >> results/buildLog.out
+  #rm results/buildLog2.out
 
   # Will have to re-make, incase anything was changed in source.
-  echo Making ...
-  cd ../
-  make &> test/results/buildLog2.out
-  if [ "$?" -ne "0" ]; then
-    echo "Compile stage failed. Check the buildLog.out for details."
-    cd test
+  #echo Making ...
+  #cd ../
+  #make &> test/results/buildLog2.out
+  #if [ "$?" -ne "0" ]; then
+  #  echo "Compile stage failed. Check the buildLog.out for details."
+  #  cd test
     # unfortunatly bash cannot support "&>>" - yet!
-    cat results/buildLog2.out >> results/buildLog.out
-    rm results/buildLog2.out
-    exit
-  fi
-  cd test
+   # cat results/buildLog2.out >> results/buildLog.out
+   # rm results/buildLog2.out
+   # exit
+  #fi
+  #cd test
   # unfortunatly bash cannot support "&>>" - yet!
-  cat results/buildLog2.out >> results/buildLog.out
-  rm results/buildLog2.out
+  #cat results/buildLog2.out >> results/buildLog.out
+  #rm results/buildLog2.out
 
 else
   echo Skipping the build process
@@ -175,7 +262,7 @@ fi
 #
 if [ "$SKIPCOVERAGE" == "" ]; then
   echo Getting baseline coverage information ...
-  lcov -c -i -d ../src -o results/coverage/app_base.info >> results/buildLog.out
+  lcov -c -i -d $OPENDIAS_SRC -o results/coverage/app_base.info >> results/buildLog.out
 fi
 
 
@@ -212,7 +299,7 @@ export SANE_CONFIG_DIR=/tmp/opendiassaneconfig/
 
 
 PWD=`pwd`
-echo $VALGRIND $SUPPRESS $VALGRINDOPTS $GENSUPP ../src/opendias -c $PWD/config/testapp.conf \> results/resultsFiles/appLog.out > config/startAppCommands
+echo $VALGRIND $SUPPRESS $VALGRINDOPTS $GENSUPP $OPENDIAS_BINLOCATION/opendias -c $PWD/config/testapp.conf \> results/resultsFiles/appLog.out > config/startAppCommands
 
 
 
@@ -220,11 +307,10 @@ echo $VALGRIND $SUPPRESS $VALGRINDOPTS $GENSUPP ../src/opendias -c $PWD/config/t
 #######################################
 # Run automated tests
 echo Starting test harness ...
-#echo perl ./harness.pl $GRAPHICALCLIENT $RECORD $SKIPMEMORY $@
+echo perl ./harness.pl $GRAPHICALCLIENT $RECORD $SKIPMEMORY $@
 perl ./harness.pl $GRAPHICALCLIENT $RECORD $SKIPMEMORY $@ 2> /dev/null
 #######################################
 #######################################
-
 
 #
 # Collect process and build coverage report

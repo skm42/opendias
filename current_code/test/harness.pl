@@ -4,6 +4,20 @@ use lib qw( regressionTests regressionTests/lib );
 use Getopt::Std;
 use standardTests;
 
+if ( !defined($ENV{OPENDIAS_LOGLOCATION}) ) {
+	print STDERR "define environment variable OPENDIAS_LOGLOCATION\n";
+	exit -1
+}
+
+if ( !defined($ENV{OPENDIAS_RUNLOCATION}) ) {
+	print STDERR "define environment variable OPENDIAS_RUNLOCATION\n";
+	exit -1
+}
+if ( !defined($ENV{OPENDIAS_PORT}) ) {
+	print STDERR "define environment variable OPENDIAS_PORT\n";
+	exit -1
+}
+
 $| = 1;
 
 # Setup
@@ -57,6 +71,17 @@ print OUTPUTINDEX <<EOS;
 EOS
 
 
+#unsure this instance of opendias is not running
+	open(PIDFILE,$ENV{OPENDIAS_RUNLOCATION} . "/opendias.pid") or warn "cannot open pidfile $!\n";
+	my $pid=<PIDFILE>;
+	close(PIDFILE);
+	if ( kill(0,$pid) ) {
+		print "opendias $pid already running. shutting down\n";
+		if ( !kill(10,$pid) ) {
+			print "failed to shutdown abort\n";
+			exit(110);
+		}
+	}
 
 
 ####################################
@@ -73,7 +98,28 @@ for my $requested (@runTests) {
   my $found = "find $TESTPATH -maxdepth 1 -type f -name $requested.pm | sort";
   $found = `$found`;
   for my $TEST (split(" ", $found) ) {
+	open(TESTPLAN,"<","regressionTests/testplan") or warn "cannot open testplan$!\n";
+	my $line;
+	my $runTest=0;
+	foreach $line (<TESTPLAN>) {
+		my $testname=$TEST;
+		$testname=~s/regressionTests\///;
+		$testname=~s/\.pm//;
+		if ( $line =~ /$testname/ ) {
+			if ( $line =~ /^\*/ ) {
+				$runTest=1;
+			}
+			if ( $line =~ /^o/ ) {
+				$runTest=1;
+			}
+		}
+	}
+	close(TESTPLAN);
 
+	if ( !$runTest ) {
+		print "skipping test $TEST\n";
+		next;
+	}
     printProgressLine($TEST, "Setting up environment");
 
     # Create results area and cleanup any old test results
@@ -86,6 +132,8 @@ for my $requested (@runTests) {
     system("rm -rf /tmp/opendiastest");
     system("mkdir -p $outputDir/$TESTCASENAME");
     system("mkdir -p /tmp/opendiastest");
+	unlink($ENV{OPENDIAS_LOGLOCATION} . "/opendias.log") or warn "cannot remove old logfile $!\n";
+
 
     openlog( "$outputDir/$TESTCASENAME/testLog.out" );
 
@@ -113,7 +161,7 @@ for my $requested (@runTests) {
         }
       }
       closedir(DIR);
-    }
+    } 
     ## We want to update the location of any outputs (from the app default)
     #system("/usr/bin/sqlite3 /tmp/opendiastest/openDIAS.sqlite3 \"UPDATE config SET config_option='/tmp/opendiastest' WHERE config_value='scan_directory'\""); 
 
@@ -144,7 +192,6 @@ for my $requested (@runTests) {
         eval "regressionTests::${TESTCASENAME}::".$testProfile->{updateStartCommand}."(\\\$startCommand)";
       }
 
-
       # Start opendias
       if( $testProfile->{valgrind} && $testProfile->{valgrind} == 1 ) {
         printProgressLine($TEST, "Starting service (valgrind)");
@@ -155,6 +202,7 @@ for my $requested (@runTests) {
                       {../src/opendias}xms;
         o_log("No need for valgrind on this test.");
       }
+
       $RES = 1 unless startService( $startCommand, $testProfile->{startTimeout} );
 
 
@@ -177,7 +225,18 @@ for my $requested (@runTests) {
         eval "\$RES = regressionTests::".$TESTCASENAME."::test()";
         o_log("Error while running test: $@") if ($@);
         printProgressLine($TEST, "Stopping");
-        stopService();
+	if ($testProfile->{shutdown}) {
+		stopService();
+	} else {
+		if ( open(PIDFILE,$ENV{OPENDIAS_RUNLOCATION} . "/opendias.pid") ) {
+			my $pid=<PIDFILE>;
+			close(PIDFILE);
+			if ( kill(0,$pid) ) {
+				print "opendias running unexpected with $pid. aborting\n";
+				exit(110);
+			}
+		}
+	}
       }
 
 
@@ -236,15 +295,33 @@ for my $requested (@runTests) {
       system("cat $outputDir/appLog.out >> $outputDir/$TESTCASENAME/appLog.out");
       system("echo -------------------------------------------------- >> $outputDir/$TESTCASENAME/appLog.out");
       system("echo LOG-OUTPUT >> $outputDir/$TESTCASENAME/appLog.out");
-      system("cat /var/log/opendias/opendias.log >> $outputDir/$TESTCASENAME/appLog.out");
-      unlink("/var/log/opendias/opendias.log");
+      system("cat " . $ENV{OPENDIAS_LOGLOCATION} . "/opendias.log >> $outputDir/$TESTCASENAME/appLog.out");
+      unlink($ENV{OPENDIAS_LOGLOCATION} . "/opendias.log");
       system("sed -f config/appLogUnify.sed < $outputDir/$TESTCASENAME/appLog.out > $outputDir/$TESTCASENAME/appLog4Compare.out");
       removeDuplicateLines("$outputDir/$TESTCASENAME/appLog4Compare.out");
       if( length $GENERATE ) {
         system("cp $outputDir/$TESTCASENAME/appLog4Compare.out $TESTPATH/expected/$TESTCASENAME/appLog.out");
       }
       $APP_RES="<td class='none'><a href='./$TESTCASENAME/appLog.out'>actual</a></td>";
-      system("diff -ydN $TESTPATH/expected/$TESTCASENAME/appLog.out $outputDir/$TESTCASENAME/appLog4Compare.out > $outputDir/$TESTCASENAME/appLogDiff.out");
+
+	#need to replace standards in expected result 
+	open(APPLOG_E,"<","$TESTPATH/expected/$TESTCASENAME/appLog.out") or warn "missing $TESTPATH/expected/$TESTCASENAME/appLog.out\n";
+	open(APPLOG_ET,">","/tmp/appLog.out") or die "PANIC: cannot create /tmp/appLog.out $!\n";
+	my $line;
+	foreach $line (<APPLOG_E>) {
+		$line=~s/OPENDIAS_LOGLOCATION/$ENV{OPENDIAS_LOGLOCATION}/g;
+		$line=~s/OPENDIAS_RUNLOCATION/$ENV{OPENDIAS_RUNLOCATION}/g;
+		$line=~s/OPENDIAS_PORT/$ENV{OPENDIAS_PORT}/g;
+		$line=~s/OPENDIAS_PKGDATADIR/$ENV{OPENDIAS_PKGDATADIR}/g;
+			
+
+		print(APPLOG_ET $line);
+	}
+	close(APPLOG_E);
+	close(APPLOG_ET);	
+
+	system("diff -ydN /tmp/appLog.out $outputDir/$TESTCASENAME/appLog4Compare.out > $outputDir/$TESTCASENAME/appLogDiff.out");
+	unlink("/tmp/appLog.out") or warn "cannot remove /tmp/appLog.out $!\n";
       if( $? >> 8 == 0 ) {
         system("rm $outputDir/$TESTCASENAME/appLogDiff.out");
         $APP_RES .= "<td class='ok'>OK</td>";

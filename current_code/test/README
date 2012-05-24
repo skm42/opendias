@@ -72,11 +72,32 @@ cpan -f WWW::HtmlUnit
 3.3 Setting up the machine
 --------------------------
 - The user that runs the test harness, will need access to:
-  * /var/log/opendias
-  * /var/run/
+  * /var/log/opendias ($OPENDIAS_LOGLOCATION)
+  * /var/run/opendias ($OPENDIAS_RUNLOCATION)
   
 4. How to run the tests (automated).
 -------------------------------------
 cd test
 ./setupRun.sh
 view './index.html' for the test results
+
+--------------------------------------------------------------------------------
+Appendix A: dependencies
+--------------------------------------------------------------------------------
+libdbi-perl
+libinline-perl (required by cpan module Inine::Java)
+openjdk-6-jdk (required by cpan module Inine::Java)
+apt-rdepends
+sqlite3
+libdbd-sqlite3-perl
+
+--------------------------------------------------------------------------------
+Appendix B: environment variables
+--------------------------------------------------------------------------------
+export OPENDIAS_LOGLOCATION=/var/log/opendias
+export OPENDIAS_PKGDATADIR=/usr/share/opendias
+export OPENDIAS_PORT=4242
+export OPENDIAS_RUNLOCATION=/var/run/opendias
+export OPENDIAS_SRC=opendias/current_code
+export OPENDIAS_BINLOCATION=/usr/bin/
+export PERL5LIB=/home/computer/projects/openDIAS/downloads/dist/lib/perl/5.14.2:/home/computer/projects/openDIAS/downloads/dist/share/perl/5.14.2
