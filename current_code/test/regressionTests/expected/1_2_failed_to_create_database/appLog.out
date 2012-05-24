@@ -10,5 +10,3 @@ LOG-OUTPUT
 -date-:-thread-:DBG: Closing database
 -date-:-thread-:WRN: Could not create/connect to new database
 -date-:-thread-:WRN: /root/openDIAS.sqlite3
--date-:-thread-:INF: openDias service is shutting down....
--date-:-thread-:INF: openDias service has shutdown.

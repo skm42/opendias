@@ -20,8 +20,8 @@ LOG-OUTPUT
 -date-:-thread-:INF: Moving log verbosity from 4 to 3
 -date-:-thread-:INF: Config setting: scan_directory = /tmp/opendiastest/
 -date-:-thread-:INF: Config setting: show_all_available = 1
--date-:-thread-:INF: Config setting: port = 8988
--date-:-thread-:INF: Config setting: log_directory = /var/log/opendias
+-date-:-thread-:INF: Config setting: port = OPENDIAS_PORT
+-date-:-thread-:INF: Config setting: log_directory = OPENDIAS_LOGLOCATION
 -date-:-thread-:INF: Created directory.
 -date-:-thread-:INF: Sane backend started
 -date-:-thread-:INF: Sane command socket is open
