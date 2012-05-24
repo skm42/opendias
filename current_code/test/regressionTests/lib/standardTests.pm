@@ -50,12 +50,18 @@ sub startService {
 
   my $serviceStart_timeout = $overrideTimeout || 10; # default of 10 seconds
 
-  `$startCommand`;
   o_log("STARTING app...");
+  #print("\nSTARTING ...\n");
+  #`$startCommand`;
+	system($startCommand);
+	my $rval = $? >>8;
+	if ( $rval != 0 ) {
+		print "WARNING: startCommand $startCommand failed with $rval\n";
+	}
 
   my $sock;
   while( ! ( $sock = IO::Socket::INET->new( PeerAddr => 'localhost',
-                                            PeerPort => '8988',
+                                            PeerPort => $ENV{OPENDIAS_PORT},
                                             Timeout => 1,
                                             Proto => 'tcp') ) ) {
     $serviceStart_timeout--;
@@ -135,11 +141,27 @@ sub stopService {
   }
 
   o_log("Stopping service");
-  system("kill -s USR1 `cat /var/run/opendias.pid`");
+  print("\nStopping service\n");
+	open(PIDFILE,'<',$ENV{OPENDIAS_RUNLOCATION} . "/opendias.pid");
+	my $pid=<PIDFILE>;
+	close(PIDFILE);
+	#o_log("signaling $pid");
+	kill(0, $pid) or warn "cannot signal $pid $!\n";
+	kill(10, $pid) or warn "shutdown failed $!\n";
+	if ( ! kill(0,$pid) ) {
+		print "opendias still running. aborting.....\n";
+		exit(110);
+	}
+  #system("kill -s USR1 `cat " . $ENV{OPENDIAS_RUNLOCATION} . "/opendias.pid`");
 
   # We need valgrind (if running) so finish it's work nad write it's log
   o_log("Waiting for valgrind to finish.");
-  system("while [ \"`pidof valgrind.bin`\" != \"\" ]; do sleep 1; done");
+  #system("while [ \"`pidof valgrind.bin`\" != \"\" ]; do sleep 1; done");
+
+  #remark: normally valgrind is running with the pid available in pidfile. 
+  # therefore valgrind must have already be shutdown. which are the situations
+  # where this is not possible?
+  
 
   sleep(1); # Ensure logs are caught up.
   close(TESTLOG);
@@ -149,7 +171,7 @@ sub getPage {
   my $uri = $_[0] || "/";
   my $page;
   o_log("Fetching page: $uri");
-  eval( "\$page = \$client->getPage(\"http://localhost:8988/opendias".$uri."\");" );
+  eval( "\$page = \$client->getPage(\"http://localhost:" . $ENV{OPENDIAS_PORT} . "/opendias".$uri."\");" );
   if($@ && ref($@) =~ /Exception/) {
     #print "Exception: " . $@->getMessage . "\n";
   } elsif($@) {
@@ -277,7 +299,7 @@ sub directRequest {
   my ($params, $supressLogOfRequest ) = @_;
   my %default = (
     '__proto' => 'http://',
-    '__domain' => 'localhost:8988',
+    '__domain' => 'localhost:' . $ENV{OPENDIAS_PORT},
     '__uri' => '/opendias/dynamic',
     '__encoding' => 'application/x-www-form-urlencoded',
     '__agent' => 'opendias-api-testing',
