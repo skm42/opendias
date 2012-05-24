@@ -12,6 +12,7 @@ sub testProfile {
   return {
     valgrind => 1,
     client => 0,
+    shutdown => 1,
   }; 
 } 
 
@@ -22,7 +23,7 @@ sub test {
   #
   my %default = (
     '__proto' => 'http://',
-    '__domain' => 'localhost:8988',
+    '__domain' => 'localhost:' . $ENV{OPENDIAS_PORT},
     '__uri' => '/opendias/dynamic',
     '__encoding' => 'application/x-www-form-urlencoded',
     '__agent' => 'opendias-api-testing',

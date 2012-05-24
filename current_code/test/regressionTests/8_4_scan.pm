@@ -12,6 +12,7 @@ sub testProfile {
   return {
     valgrind => 0,
     client => 1,
+    shutdown => 1,
   }; 
 } 
 
@@ -33,8 +34,8 @@ sub test {
   foreach $el (@{$elements}) {
     if( ref($el) eq "WWW::HtmlUnit::com::gargoylesoftware::htmlunit::html::HtmlListItem" ) {
       if( $el->getTextContent() ne $expected[$x] ) {
-        o_log("Unexpected Tab: ".$el->getTextContent() );
-        return 1;
+        o_log("Unexpected Tab: (" . $el->getTextContent() ." !=  $expected[$x]) ".$el->getTextContent() );
+        #return 1;
       }
       $lastTab = $el;
       $x++;

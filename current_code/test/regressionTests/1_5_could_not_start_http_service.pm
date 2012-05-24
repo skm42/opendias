@@ -13,6 +13,7 @@ sub testProfile {
     valgrind => 1,
     client => 0,
     updateStartCommand => 'updateStartCommand',
+    shutdown => 0,
   }; 
 } 
 
@@ -20,7 +21,7 @@ sub updateStartCommand {
   # Start a port on the opendias port
   $sock = IO::Socket::INET->new( Listen => 1,
                                  LocalAddr => 'localhost',
-                                 LocalPort => '8988',
+                                 LocalPort => $ENV{OPENDIAS_PORT},
                                  Proto => 'tcp')
       || die "Could not create blocking socket: $!";
 

@@ -11,6 +11,7 @@ sub testProfile {
   return {
     valgrind => 0,
     client => 1,
+    shutdown => 1,
   }; 
 } 
 

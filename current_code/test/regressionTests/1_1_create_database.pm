@@ -10,6 +10,7 @@ sub testProfile {
     valgrind => 1,
     client => 0,
     startTimeout => 240,
+    shutdown => 1,
   };
 }
 
