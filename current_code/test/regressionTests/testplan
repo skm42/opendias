@@ -1,6 +1,6 @@
 * 1_1_create_database
 * 1_2_failed_to_create_database
-* 1_3_missing_config_file
+- 1_3_missing_config_file
 * 1_4_various_kills_are_ignored
 * 1_5_could_not_start_http_service
   1_6_no_permission_read_create_db
