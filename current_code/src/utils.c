@@ -410,7 +410,7 @@ void o_concatf(char **mainStr, const char *fmt, ...) {
 
 }
 
-extern int o_exec(int mode, int argc, const char *path,...) {
+int o_exec(int mode, int argc, const char *path,...) {
 /*Description: execute the command provided as arglist. The arglist is used to
  to build exec's argv limited by argc. The mode parameter specifies how the command is to be 
  executed. 
