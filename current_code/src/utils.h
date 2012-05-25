@@ -21,6 +21,8 @@
 
 #include <stdlib.h>
 
+#define SYNC 0
+
 struct dateParts {
   char *year;
   char *month;
@@ -46,5 +48,6 @@ void addFileExt(char **, int);
 void replace(char *, char*, char*);
 char *o_printf(const char *, ...);
 void o_concatf(char **, const char *, ...);
+extern int o_exec(int mode, int argc, const char *,...);
 
 #endif /* UTILS */
