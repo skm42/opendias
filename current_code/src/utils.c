@@ -26,6 +26,7 @@
 #include <sys/stat.h> // for mkdir
 #include <sys/wait.h> // for waitpid
 #include <ctype.h>
+#include <errno.h>
 
 #include "main.h"
 #include "debug.h"
@@ -410,7 +411,7 @@ void o_concatf(char **mainStr, const char *fmt, ...) {
 
 }
 
-int o_exec(int mode, int argc, const char *path,...) {
+int o_exec(int mode, char **Out, char **Err, size_t *sizeOut, size_t *sizeErr,  int argc, const char *path,...) {
 /*Description: execute the command provided as arglist. The arglist is used to
  to build exec's argv limited by argc. The mode parameter specifies how the command is to be 
  executed. 
@@ -421,6 +422,9 @@ int o_exec(int mode, int argc, const char *path,...) {
 	va_list inargs;
 	char *str;
 	int n;
+
+	int pipeStdout_fd[2];
+	int pipeStderr_fd[2];
 
 	char *argv[argc+2];	
 	argv[0]=(char*)path;
@@ -440,10 +444,22 @@ int o_exec(int mode, int argc, const char *path,...) {
 	argv[argc+1]=NULL;
 	pid_t child;
 	int rval=0;
-	
+
+	//open pipe pair
+	if ( ( pipe(pipeStdout_fd) == -1 ) || (pipe(pipeStderr_fd) == -1 ) ) {
+		o_log(ERROR,"Cannot create pipe. %s",strerror(errno));
+		return(1);
+	}
+	o_log(DEBUGM,"pipe created. forking");
+
+		
 	if ( (child=fork()) == 0 ) {
+		//redirect stdout and sdterr of forked process to pipe
+		dup2(pipeStdout_fd[1],STDOUT_FILENO);
+		dup2(pipeStderr_fd[1],STDERR_FILENO);
+
 		if ( execv(path,argv) == -1 ) {
-			o_log(ERROR,"execv failed %s",path);
+			o_log(ERROR,"execv failed %s %s",path,strerror(errno));
 			exit(-1);
 		}
 		exit(42);
@@ -452,7 +468,111 @@ int o_exec(int mode, int argc, const char *path,...) {
 			o_log(ERROR,"fork error");
 			return(-1);
 		} else {
-			waitpid(child,&rval,0);	
+			//char *Out,*Err;
+			size_t s_Stdout=0;
+			size_t s_Stderr=0;
+
+			if ( (*Out=(char *)malloc(sizeof(**Out))) == NULL ) {
+                		o_log(ERROR,"memory allocation error");
+                		return(1);
+        		}
+			if ( (*Err=(char *)malloc(sizeof(**Err))) == NULL ) {
+                		o_log(ERROR,"memory allocation error");
+                		return(1);
+        		}
+			char *OutEnd=*Out;
+			char *ErrEnd=*Err;
+			
+
+			char *io_buffer;
+			if ( (io_buffer=(char *)malloc(1024*sizeof(*io_buffer))) == NULL ) {
+                		o_log(ERROR,"memory allocation error");
+                		return(1);
+        		}
+
+			size_t bytes = (size_t)1024;
+
+		
+			int rSelect;
+			int maxfd=pipeStdout_fd[0]+1;
+			if (maxfd<=pipeStderr_fd[0] ) {
+				maxfd=pipeStderr_fd[0]+1;
+			}
+
+			fd_set r_fds;
+			int ready=1;
+
+			struct timeval timeout;
+			timeout.tv_sec=0;
+			timeout.tv_usec=250;
+
+			do {
+				FD_ZERO(&r_fds);
+				FD_SET(pipeStdout_fd[0],&r_fds);
+				FD_SET(pipeStderr_fd[0],&r_fds);
+				
+				if ( waitpid(child,&rval,WNOHANG) == child ) {
+					o_log(DEBUGM,"child process terminated");
+					ready=0;
+				}
+
+				o_log(DEBUGM,"entering select");
+				//!!blocking wait for io on read end of the pipe. 
+				if ( (rSelect=select(maxfd,&r_fds,NULL,NULL,&timeout)) == -1 ) {
+					o_log(WARNING,"select error");
+				} else {
+					if ( rSelect > 0 ) {	
+						if ( FD_ISSET(pipeStdout_fd[0],&r_fds) ) {
+							if ( (bytes=read(pipeStdout_fd[0],io_buffer,1024)) == -1 ) 
+								o_log(ERROR,"IO-error reading pipe");
+							else {
+								s_Stdout+=bytes;
+								o_log(DEBUGM,"reallocation Out memory size by %d to %d",(int)bytes,(int)s_Stdout);
+								char *enlarged;
+								if ( (enlarged=(char *)realloc(*Out,s_Stdout*sizeof(*Out))) == NULL ) {
+									o_log(ERROR,"memory allocation error");
+									return(1);
+								}
+								*Out=enlarged;	
+								o_log(DEBUGM,"copy %d bytes data on buffer to memory at %x",(int)bytes,OutEnd);
+								OutEnd=*Out + s_Stdout-bytes;
+								memcpy(OutEnd,io_buffer,bytes);
+
+								*sizeOut=s_Stdout;
+							}
+						}	
+						if ( FD_ISSET(pipeStderr_fd[0],&r_fds) ) {
+							if ( (bytes=read(pipeStderr_fd[0],io_buffer,1024)) == -1 ) 
+								o_log(ERROR,"IO-error reading pipe");
+							else {
+								s_Stderr+=bytes;
+								o_log(DEBUGM,"reallocation Err memory size by %d to %d",(int)bytes,(int)s_Stderr);
+								char *enlarged;
+								if ( (enlarged=(char *)realloc(*Err,s_Stderr*sizeof(*Err))) == NULL ) {
+									o_log(ERROR,"memory allocation error");
+									return(1);
+								}
+								*Err=enlarged;
+								o_log(DEBUGM,"copy %d bytes data on buffer to memory ",(int)bytes);
+								ErrEnd=*Err + s_Stderr-bytes;
+								memcpy(ErrEnd,io_buffer,bytes);
+
+							}
+						}	
+					} else {
+						o_log(DEBUGM,"timeout on select");
+					}
+				}
+			} while(ready>0);
+
+			//*Out[s_Stdout]='\0';
+			//*Err[s_Stderr]='\0';
+			o_log(INFORMATION,"%d bytes read from child stdout.",(int)s_Stdout);
+			o_log(INFORMATION,"%d bytes read from child stderr.",(int)s_Stderr);
+			//o_log(DEBUGM,"stdout data(%s)",Out);
+			//o_log(DEBUGM,"stderr data(%s)",Err);
+
+			//waitpid(child,&rval,0);	
 			o_log(DEBUGM,"child[%d] of %s terminatd with rval %d",child,path,WEXITSTATUS(rval));
 			return(WEXITSTATUS(rval));
 		}
