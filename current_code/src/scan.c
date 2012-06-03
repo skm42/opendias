@@ -90,9 +90,12 @@ int setOptions( char *uuid, SANE_Handle *openDeviceHandle, int *request_resoluti
     // we MUST set this value
     if ( (sod->cap & SANE_CAP_SOFT_DETECT) && ((sod->cap & SANE_CAP_INACTIVE) == 0) ) {
 
+			o_log(DEBUGM,"sane setup: working on option %s",sod->name);
+
       // A hardware setting
       if ( sod->cap & SANE_CAP_HARD_SELECT ) {
         o_log(DEBUGM, "We've got no way of telling the user to set the hardward %s! Err", sod->name);
+				//TODO 
       }
 
       // a software setting
@@ -375,11 +378,13 @@ int setOptions( char *uuid, SANE_Handle *openDeviceHandle, int *request_resoluti
           else if (strcmp (sod->name, "read-limit") == 0) {
             v_b = SANE_TRUE;
             status = control_option(openDeviceHandle, sod, option, SANE_ACTION_SET_VALUE, &v_b, &paramSetRet);
+						o_log(DEBUGM,"option read-limit is set");
           }
           else if (strcmp (sod->name, "read-limit-size") == 0) {
             v_i = sod->constraint.range->max;
             *buff_requested_len = sod->constraint.range->max;
             status = control_option(openDeviceHandle, sod, option, SANE_ACTION_SET_VALUE, &v_i, &paramSetRet);
+						o_log(DEBUGM,"scanning device expected buffer size is %d ",(int)sod->constraint.range->max);
           }
           else if (strcmp (sod->name, "read-return-value") == 0) {
             status = control_option(openDeviceHandle, sod, option, SANE_ACTION_SET_VALUE, "Default", &paramSetRet);
@@ -404,13 +409,13 @@ int setOptions( char *uuid, SANE_Handle *openDeviceHandle, int *request_resoluti
 
           // try setting automatically
           if ( !setDefaultScannerOption(openDeviceHandle, sod, option) )
-            o_log(DEBUGM, "Could not set authmatically", sod->name);
+            o_log(DEBUGM, "Could not set option %s authmatically", sod->name);
 
         }
       }
     }
     else {
-      o_log(DEBUGM, "The option does not need to be set.");
+      o_log(DEBUGM, "The option %s does not need to be set.", sod->name);
     }
 
   }
@@ -433,6 +438,8 @@ SANE_Byte *collectData( char *uuid, SANE_Handle *openDeviceHandle, int *buff_req
   int readItteration = 0;
   size_t readSoFar = strlen(header);
 
+	*buff_requested_len=(32 * 1024);
+
   // Initialise the initial buffer and blank image;
   o_log(DEBUGM, "Using a buff_requested_len of %d to collect a total of %d", *buff_requested_len, totbytes);
   raw_image = (unsigned char *)malloc( totbytes + readSoFar );
@@ -452,7 +459,9 @@ SANE_Byte *collectData( char *uuid, SANE_Handle *openDeviceHandle, int *buff_req
     return NULL;
   }
 
-  o_log(DEBUGM, "setting non-blocking mode was %s", sane_strstatus( sane_set_io_mode (openDeviceHandle, SANE_TRUE) ) );
+   //sane_set_io_mode may fail if backend does not support non-blocking io. in addition calling for logging purpose
+      //is not nice.
+  //o_log(DEBUGM, "setting non-blocking mode was %s", sane_strstatus( sane_set_io_mode (openDeviceHandle, SANE_TRUE) ) );
   o_log(DEBUGM, "scan_read - start");
   do {
     // Set status as 'scanning'
@@ -469,6 +478,8 @@ SANE_Byte *collectData( char *uuid, SANE_Handle *openDeviceHandle, int *buff_req
         noMoreReads = 1;
       else
         o_log(ERROR, "something wrong while scanning: %s", sane_strstatus(status) );
+
+	//TODO we have to react here properly
     }
 
 
@@ -548,6 +559,13 @@ SANE_Byte *collectData( char *uuid, SANE_Handle *openDeviceHandle, int *buff_req
     //
     // Update the buffer (based on read feedback), in an attempt to 
     // smooth the physical reading mechanisum
+/* it seems as if scanning is more robust of buffer is not resized, but
+	the problem that scanning sometime hangs in IO_ERROR loop (status 9) 
+	remains but less frequent
+	feeling: it could be that scanning is interrupted to long with db stuff
+	  an other thing to check carefully is sane_get_parameters section noticed no log progress befor data aquire
+*/
+/*
     if( *buff_requested_len == received_length_from_sane ) {
 
       *buff_requested_len += bpl;
@@ -561,7 +579,7 @@ SANE_Byte *collectData( char *uuid, SANE_Handle *openDeviceHandle, int *buff_req
         buffer = tmp_buffer;
         o_log(DEBUGM, "Increasing read buffer to %d bytes.", *buff_requested_len);
       }
-    }
+    }*/
   } while (1);
   o_log(DEBUGM, "scan_read - end");
 
@@ -650,8 +668,12 @@ char *internalDoScanningOperation(char *uuid) {
   if(status != SANE_STATUS_GOOD) {  
     handleSaneErrors("Cannot start scanning", status, 0);
     updateScanProgress(uuid, SCAN_ERRO_FROM_SCANNER, status);
+	//TODO cleanup required
     return 0;
   }
+
+	//TODO scanimage queries sane status at this point (performed here after try to switch to non-blocking)
+
 
   // Get scanning params (from the scanner)
   if( request_resolution == 0 ) {
@@ -662,8 +684,31 @@ char *internalDoScanningOperation(char *uuid) {
 
   status = sane_set_io_mode(openDeviceHandle, SANE_TRUE);
 
+  // according to sane doc chapter 4.3.12 sane_set_io_mode status must be checked, the backend may elect to not support NON-Blocking mode.
+  if ( status == SANE_STATUS_UNSUPPORTED ) {
+	o_log(ERROR,"sane backend does not support non-blocking operations");
+
+	if ( (status = sane_set_io_mode(openDeviceHandle, SANE_FALSE)) != SANE_STATUS_GOOD) {
+		o_log(ERROR,"could not reset to blocking mode");
+		return 0;
+	}
+	
+        //updateScanProgress(uuid, SCAN_ERRO_FROM_SCANNER, status);
+	
+	//o_log(DEBUGM, "sane_cancel");
+	//sane_cancel(openDeviceHandle);
+
+	//o_log(DEBUGM, "sane_close");
+	//sane_close(openDeviceHandle);
+	//return 0;
+  }
+
   o_log(DEBUGM, "Get scanning params");
-  status = sane_get_parameters (openDeviceHandle, &pars);
+  if ( (status = sane_get_parameters (openDeviceHandle, &pars)) != SANE_STATUS_GOOD ) {
+		o_log(ERROR, "unexpected sane state %d (%s)", (int)status,sane_strstatus(status));
+		//TODO cleanup required
+		return 0;
+	}
   o_log(INFORMATION, "Scanner Parm : stat=%s form=%d,lf=%d,bpl=%d,pixpl=%d,lin=%d,dep=%d",
     sane_strstatus (status),
     pars.format, pars.last_frame,
@@ -691,40 +736,45 @@ char *internalDoScanningOperation(char *uuid) {
   docid_s = getScanParam(uuid, SCAN_PARAM_DOCID);
   total_requested_pages_s = getScanParam(uuid, SCAN_PARAM_REQUESTED_PAGES);
   total_requested_pages = atoi(total_requested_pages_s);
-  free(total_requested_pages_s);
-  if( docid_s == NULL ) {
-    o_log(DEBUGM, "Saving record");
-    updateScanProgress(uuid, SCAN_DB_WORKING, 0);
+  free(total_requested_pages_s);   
 
-    docid_s = addNewScannedDoc(pars.lines, pars.pixels_per_line, request_resolution, total_requested_pages); 
-    setScanParam(uuid, SCAN_PARAM_DOCID, docid_s);
-    setScanParam(uuid, SCAN_PARAM_ON_PAGE, "1");
-    current_page = 1;
-  }
-  else {
-    char *current_page_s = getScanParam(uuid, SCAN_PARAM_ON_PAGE);
-    current_page = atoi(current_page_s);
-    free(current_page_s);
+	//TODO entry for scanned document should be created if scanning was sucessful
+				if( docid_s == NULL ) {
+					o_log(DEBUGM, "Saving record");
+					updateScanProgress(uuid, SCAN_DB_WORKING, 0);
 
-    current_page++;
+					docid_s = addNewScannedDoc(pars.lines, pars.pixels_per_line, request_resolution, total_requested_pages); 
+					setScanParam(uuid, SCAN_PARAM_DOCID, docid_s);
+					setScanParam(uuid, SCAN_PARAM_ON_PAGE, "1");
+					current_page = 1;
+				}
+				else {
+					char *current_page_s = getScanParam(uuid, SCAN_PARAM_ON_PAGE);
+					current_page = atoi(current_page_s);
+					free(current_page_s);
 
-    current_page_s = itoa(current_page, 10);
-    setScanParam(uuid, SCAN_PARAM_ON_PAGE, current_page_s);
-    free(current_page_s);
-  }
-  docid = atoi(docid_s);
-  free(docid_s);
+					current_page++;
+
+					current_page_s = itoa(current_page, 10);
+					setScanParam(uuid, SCAN_PARAM_ON_PAGE, current_page_s);
+					free(current_page_s);
+				}
+				docid = atoi(docid_s);
+				free(docid_s);
+
+
 
   totbytes = (double)((pars.bytes_per_line * pars.lines) / expectFrames);
 
   if( buff_requested_len <= 1 )
     buff_requested_len = 30 * pars.bytes_per_line * pars.depth;
+					//why 30 ?	
 
   char *header = o_printf ("P5\n# SANE data follows\n%d %d\n%d\n", 
     pars.pixels_per_line, pars.lines,
     (pars.depth <= 8) ? 255 : 65535);
 
-  /* ========================================================== */
+  /* =====Retrieving data from scanner device ================== */
   raw_image = collectData( (char *)uuid, openDeviceHandle, &buff_requested_len, expectFrames, totbytes, pars.bytes_per_line, header );
   o_log(INFORMATION, "Scanning done.");
 
