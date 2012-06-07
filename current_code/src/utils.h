@@ -48,6 +48,6 @@ void addFileExt(char **, int);
 void replace(char *, char*, char*);
 char *o_printf(const char *, ...);
 void o_concatf(char **, const char *, ...);
-int o_exec(int mode, int argc, const char *,...);
+int o_exec(int mode, char **Out, char **Err, size_t *sizeOut, size_t *sizeErr, int argc, const char *,...);
 
 #endif /* UTILS */

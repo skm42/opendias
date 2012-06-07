@@ -380,6 +380,7 @@ char *i_printf(const char *fmt, va_list inargs) {
 		exit(110);
 	}
 	
+	va_end(inargs);
 
 	//printf("leaving i_printf result = %s\n",str);
 	return(str);
