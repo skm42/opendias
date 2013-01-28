@@ -864,31 +864,28 @@ char *updateUser( char *username, char *realname, char *password, char *role, in
 char *createUser( char *username, char *realname, char *password, char *role, int can_edit_access, struct simpleLinkedList *session_data, char *lang) {
   struct simpleLinkedList *rSet;
   char *useUsername = NULL;
-  char *created = NULL;
   char *sql;
-		char dbtime[21];
+	char dbtime[21];
 
 	if ( can_edit_access == 1 ) {
     	useUsername = username;
-    }
-    else {
+   } else {
       o_log(ERROR, "Client specified a user to update, but they do not have permission.");
       return o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>%s</error></Response>", getString("LOCAL_no_access", lang) );
-    }
+   }
 
-  // Check the user does not already exist
-  sql = o_strdup(
+	// Check the user does not already exist
+	sql = o_strdup(
     "SELECT created \
     FROM user_access \
     WHERE username = ?" );
-  struct simpleLinkedList *vars = sll_init();
-  sll_append(vars, DB_TEXT );
-  sll_append(vars, useUsername );
-  rSet = runquery_db( sql, vars );
-  free( sql );
+	struct simpleLinkedList *vars = sll_init();
+	sll_append(vars, DB_TEXT );
+	sll_append(vars, useUsername );
+	rSet = runquery_db( sql, vars );
+	free( sql );
 
-  if( rSet == NULL ) {
-    if ( can_edit_access == 1 ) {
+	if( rSet == NULL ) {
       // Create a new user
 
 		//get time creation time salt
@@ -920,34 +917,13 @@ char *createUser( char *username, char *realname, char *password, char *role, in
 		sll_append(vars, role );
 		runUpdate_db( sql, vars );
 		free( sql );
-    	free( password_hash );
+		free( password_hash );
+		
 
-		o_log(DEBUGM,"user created");
-
-	  	//verification
-      sql = o_strdup(
-        "SELECT created \
-        FROM user_access \
-        WHERE username = ?" );
-      vars = sll_init();
-      sll_append(vars, DB_TEXT );
-      sll_append(vars, useUsername );
-      rSet = runquery_db( sql, vars );
-      free( sql );
-    }
-    else {
-      return o_strdup("<?xml version='1.0' encoding='utf-8'?>\n<Response><CreateUser><result>FAIL</result></CreateUser></Response>");
-    }
-
+		o_log(INFORMATION,"user created");
+		return o_strdup("<?xml version='1.0' encoding='utf-8'?>\n<Response><CreateUser><result>OK</result></CreateUser></Response>");
   } else {
-      return o_strdup("<?xml version='1.0' encoding='utf-8'?>\n<Response><CreateUser><result>FAIL</result></CreateUser></Response>");
+  		free_recordset( rSet );
+      return o_strdup("<?xml version='1.0' encoding='utf-8'?>\n<Response><CreateUser><result><error>user already exist</error>FAIL</result></CreateUser></Response>");
   }
-
-
-  created = o_strdup( readData_db(rSet, "created") );
-	o_log(DEBUGM,"created form = (%s) dbtime = (%s)",created,dbtime);
-  free_recordset( rSet );
-
-  free( created );
-  return o_strdup("<?xml version='1.0' encoding='utf-8'?>\n<Response><CreateUser><result>OK</result></CreateUser></Response>");
 }
