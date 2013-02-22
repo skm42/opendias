@@ -64,6 +64,7 @@ const char *getString( const char *phrase, const char *lang) {
   struct simpleLinkedList *keysList;
 
   // fetch or load the list of translations for ths language
+	//REMARK: only the main-thread should ever write to the mem area of langList and langs
   tmp = sll_searchKeys( langList, lang );
   if( tmp == NULL || tmp->data == NULL ) {
     keysList = loadLangList( lang );
@@ -77,13 +78,12 @@ const char *getString( const char *phrase, const char *lang) {
   tmp = sll_searchKeys( keysList, phrase );
   if( tmp == NULL || tmp->data == NULL ) {
     if( 0 == strcmp (lang, "en") ) {
-      o_log(ERROR, "cannot find result - returning the key instead");
-      return phrase; // cannot find ay translation - just return back the key
+      o_log(ERROR, "cannot find result for phrase %s ",phrase);
+      return phrase; // cannot find ay translation 
     }
     o_log(DEBUGM, "Cannot find key, trying for english instead");
     return getString( phrase, "en" ); // the defaulting lang translation
   }
-  o_log(SQLDEBUG, "Found string");
   return (char *)tmp->data; // the translation we found
 }
 
@@ -119,3 +119,107 @@ struct simpleLinkedList *loadLangList( const char *lang ) {
   return trList;
 }
 
+void localize(char **data, char *lang, size_t *size_ptr) {
+
+	#define MAX_COMMAND_SIZE 255
+	const char sep='-';
+	char word[MAX_COMMAND_SIZE];
+
+	
+	int within=0, complete=0, start=0, end=0,wlen=0,n,nd,words=0,translations=0,msize=0;
+	char *rdata,*pageptr,*buf;
+	o_log(DEBUGM,"entering localize");
+
+	size_t newsize,size;
+	msize=newsize=size=*size_ptr+1;
+	
+	//size_t newsize=size;
+
+	pageptr=*data;
+
+	if ( pageptr != NULL) {
+		o_log(DEBUGM,"localize data of size %d to %s:",(int) size,lang);
+		if ( (buf=(char *)malloc(size) ) == NULL ) {
+			o_log(ERROR,"localize buffer allocation error.");
+			perror("localize-->");
+			exit(1);
+		}
+		
+
+		//REMARK: avoid parsing input elements. could be used malicious.
+		for (n=0; n<(int)size; n++) {
+			
+			if ( pageptr[n] == sep && pageptr[n+1] == sep && pageptr[n+2] == sep) {
+				if ( within == 1 ) { 
+					complete=1;
+					within=0;
+					n=n+3;
+					end=n;
+				} else {
+					start=n;
+					n=n+3;
+					within=1;
+				}
+			}
+
+			if ( within == 1 ) {
+
+				if ( wlen > MAX_COMMAND_SIZE ) {
+					o_log(DEBUGM,"localizer-->localization command end was not reached");
+					wlen=0;
+					within=0;
+				} else {
+					word[wlen]=pageptr[n];
+					wlen++;
+				}
+			}
+			
+			if ( complete == 1 ) {
+				word[wlen]='\0';
+				words++;
+				char *tmp;
+				tmp=o_strdup(getString((const char*)word, lang));
+				if (tmp == NULL ) {
+					o_log(INFORMATION,"localize--> no translation found for %s",word);
+				} else {
+					translations++;
+					nd=strlen(tmp)-strlen(word)-6;
+					newsize=size+nd;
+					o_log(DEBUGM,"localize--> translation for (%s)(%d) is (%s)(%d)" ,word,strlen(word),tmp,strlen(tmp));
+					o_log(DEBUGM,"localize--> size=%d newsize=%d msize=%d nd=%d",size,newsize,msize,nd);
+					if ( newsize > msize ) {
+								msize=newsize;
+							  if ( (rdata=realloc(pageptr,newsize))==NULL ) {
+								  perror("localizer--> memory reallocation error");
+								  exit(0);
+							  } 
+							  if(rdata!=pageptr) {
+								  o_log(DEBUGM,"localizer-->realloc memory move occured");
+							  }
+							  pageptr=rdata;
+					}
+					memmove(&pageptr[end+nd],&pageptr[end],sizeof(char)*(size-end));
+					memcpy(&pageptr[start],tmp,sizeof(char)*(strlen(tmp)));	
+					n=start+strlen(tmp);
+					free(tmp);
+					
+					size=newsize;
+				}
+					
+				//REMARK: do not react within input fields later
+				complete=0;
+				wlen=0;
+			}
+		}
+	}
+	if (within == 1 ) {
+		o_log(DEBUGM,"localizer: ended without reaching end of localization command");
+	}
+	pageptr[msize-1]='\0';
+
+	//o_log(DEBUGM,"localize-->translation completed (%s)",pageptr);
+	o_log(DEBUGM,"localize-->translation done msize=%d, strlen=%d. %d words, %d translations",msize,strlen(pageptr),words,translations);
+	*size_ptr=strlen(pageptr);
+	*data=pageptr;
+	o_log(DEBUGM,"leaving localize");
+}

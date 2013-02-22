@@ -427,25 +427,25 @@ char *docFilter(char *subaction, char *textSearch, char *isActionRequired, char 
       if( 0 == strcmp(subaction, "fullList") ) {
         count++;
         if( 0 == strcmp(readData_db(rSet, "filetype"), "1") ) {
-          type = getString( "LOCAL_file_type_odf", lang );
+          type = o_printf( "---LOCAL_file_type_odf---");
         }
         else if( 0 == strcmp(readData_db(rSet, "filetype"), "3") ) {
-          type = getString( "LOCAL_file_type_pdf", lang );
+          type = o_printf( "---LOCAL_file_type_pdf---");
         }
         else if( 0 == strcmp(readData_db(rSet, "filetype"), "4") ) {
-          type = getString( "LOCAL_file_type_image", lang );
+          type = o_printf( "---LOCAL_file_type_image---");
         }
         else {
-          type = getString( "LOCAL_file_type_scanned", lang );
+          type = o_printf("---LOCAL_file_type_scanned---");
         }
         actionrequired = o_strdup(readData_db(rSet, "actionrequired"));
         title = o_strdup(readData_db(rSet, "title"));
         docid = o_strdup(readData_db(rSet, "docid"));
         if( 0 == strcmp(title, "NULL") ) {
           free(title);
-          title = o_strdup( getString( "LOCAL_default_title", lang ) ); 
+          title = o_printf("---LOCAL_default_title---");
         }
-        const char *nodate = getString( "LOCAL_no_date_set", lang);
+        const char *nodate = o_printf("---LOCAL_no_date_set---");
         humanReadableDate = dateHuman( o_strdup(readData_db(rSet, "docdatey")), 
                                        o_strdup(readData_db(rSet, "docdatem")), 
                                        o_strdup(readData_db(rSet, "docdated")),
@@ -609,7 +609,8 @@ char *checkLogin( char *username, char *password, char *lang, struct simpleLinke
       free( last_attempt_date_string );
       last_attempt->data = rtp;
 
-      return o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><Login><result>FAIL</result><message>%s</message><retry_throttle>%d</retry_throttle></Login></Response>", getString("LOCAL_login_retry_too_soon", lang), retry_throttle);
+	//check needed
+      return o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><Login><result>FAIL</result><message>---LOCAL_login_retry_too_soon---</message><retry_throttle>%d</retry_throttle></Login></Response>", retry_throttle);
     }
 
     else {
@@ -639,7 +640,9 @@ char *checkLogin( char *username, char *password, char *lang, struct simpleLinke
     o_log( ERROR, "User provded an incorrect username!" );
     sll_insert( session_data, o_strdup("next_login_attempt"), rtp );
 
-    return o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><Login><result>FAIL</result><message>%s</message><retry_throttle>%d</retry_throttle></Login></Response>", getString("LOCAL_bad_login", lang), retry_throttle);
+	//check needed
+
+    return o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><Login><result>FAIL</result><message>---LOCAL_bad_login---</message><retry_throttle>%d</retry_throttle></Login></Response>", retry_throttle);
   }
 
 
@@ -690,7 +693,7 @@ char *checkLogin( char *username, char *password, char *lang, struct simpleLinke
     o_log( ERROR, "User provded an incorrect password!" );
     sll_insert( session_data, o_strdup("next_login_attempt"), rtp );
 
-    return o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><Login><result>FAIL</result><message>%s</message><retry_throttle>%d</retry_throttle></Login></Response>", getString("LOCAL_bad_login", lang), retry_throttle);
+    return o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><Login><result>FAIL</result><message>---LOCAL_bad_login---</message><retry_throttle>%d</retry_throttle></Login></Response>", retry_throttle);
   }
 
   char *realname = o_strdup(readData_db(rSet, "realname"));
@@ -755,12 +758,12 @@ char *updateUser( char *username, char *realname, char *password, char *role, in
   else {
     if ( can_edit_access == 1 ) {
       useUsername = username;
-    }
-    else {
-      o_log(ERROR, "Client specified a user to update, but they do not have permission.");
-      return o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>%s</error></Response>", getString("LOCAL_no_access", lang) );
-    }
+    } else {
+		o_log(ERROR, "Client specified a user to update, but they do not have permission.");
+		return o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>---LOCAL_no_access---</error></Response>");
+	}
   }
+	
 
   // Check the calculated user is actually a user
   sql = o_strdup(
@@ -815,12 +818,11 @@ char *updateUser( char *username, char *realname, char *password, char *role, in
       sll_append(vars, useUsername );
       runUpdate_db( sql, vars );
       free( sql );
-    }
-    else {
+    } else {
       free( created );
       o_log(ERROR, "Client specified a user to update, but they do not have permission.");
-      return o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>%s</error></Response>", getString("LOCAL_no_access", lang) );
-    }
+      return o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>---LOCAL_no_access---</error></Response>");
+	}
   }
 
   // Update the users 'realname'
@@ -871,7 +873,7 @@ char *createUser( char *username, char *realname, char *password, char *role, in
     	useUsername = username;
    } else {
       o_log(ERROR, "Client specified a user to update, but they do not have permission.");
-      return o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>%s</error></Response>", getString("LOCAL_no_access", lang) );
+      return o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>LOCAL_no_access</error></Response>");
    }
 
 	// Check the user does not already exist

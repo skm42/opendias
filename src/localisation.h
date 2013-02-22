@@ -26,4 +26,5 @@ void locale_cleanup( void );
 const char *getString( const char *, const char * );
 struct simpleLinkedList *loadLangList( const char * );
 
+void localize(char **, char *, size_t *);
 #endif /* LOCAL */

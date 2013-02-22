@@ -11,7 +11,7 @@ $(document).ready(function() {
 
   $('#updateThisUser').click( function(){
     if( $('#newpassword').val() != $('#newpassword2').val() ) {
-      alert( LOCAL_new_password_do_not_match );
+      alert( "---LOCAL_new_password_do_not_match---" );
       return 0;
     }
     $.ajax({ url: "/opendias/dynamic",
@@ -26,9 +26,9 @@ $(document).ready(function() {
              type: "POST",
              error: function( x, t, m ) {
                if(t=="timeout") {
-                 alert("[s001] " + LOCAL_timeout_talking_to_server);
+                 alert("[s001] ---LOCAL_timeout_talking_to_server---");
                } else {
-                 alert("[s001] " + LOCAL_error_talking_to_server+": "+t+"\n"+m);
+                 alert("[s001] ---LOCAL_error_talking_to_server---: "+t+"\n"+m);
                }
              },
              success: function(data){
@@ -37,7 +37,7 @@ $(document).ready(function() {
                } else {
                  setCookie("realname", $('#newrealname').val() );
                  setLoginOutArea();
-                 alert( LOCAL_details_updated );
+                 alert( "---LOCAL_details_updated---" );
                }
              }
            });
@@ -45,7 +45,7 @@ $(document).ready(function() {
 
   $('#createNewUser').click( function(){
     if( $('#password1').val() != $('#password2').val() ) {
-      alert( $('#password1').val() + "!=" + $('#password2').val() + " " + LOCAL_new_password_do_not_match );
+      alert( $('#password1').val() + "!=" + $('#password2').val() + " ---LOCAL_new_password_do_not_match---" );
       return 0;
     }
     $.ajax({ url: "/opendias/dynamic",
@@ -61,9 +61,9 @@ $(document).ready(function() {
              type: "POST",
              error: function( x, t, m ) {
                if(t=="timeout") {
-                 alert("[s001] " + LOCAL_timeout_talking_to_server);
+                 alert("[s001] ---LOCAL_timeout_talking_to_server---");
                } else {
-                 alert("[s001] " + LOCAL_error_talking_to_server+": "+t+"\n"+m);
+                 alert("[s001] ---LOCAL_error_talking_to_server---: "+t+"\n"+m);
                }
              },
              success: function(data){

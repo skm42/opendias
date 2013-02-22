@@ -165,7 +165,7 @@ char *getDocDetail (char *documentId, char *lang ) {
       title = o_strdup(readData_db(rSet, "title"));
       if( 0 == strcmp(title, "NULL") ) {
         free(title);
-        title = o_strdup( getString( "LOCAL_default_title", lang ) );
+        title = o_printf("---LOCAL_default_title---");
       }
       o_concatf(&docs, docsTemplate, readData_db(rSet, "linkeddocid"), title );
       free( title );
@@ -192,10 +192,12 @@ char *getDocDetail (char *documentId, char *lang ) {
   title = o_strdup(readData_db(rSet, "title"));
   if( 0 == strcmp(title, "NULL") ) {
     free(title);
-    title = o_strdup( getString( "LOCAL_default_title", lang ) );
+    title = o_printf("---LOCAL_default_title---");
   }
 
-  const char *nodate = getString( "LOCAL_no_date_set", lang);
+  //check needed
+  const char *nodate = o_printf("---LOCAL_no_date_set---");
+//  const char *nodate = getString( "LOCAL_no_date_set", lang);
   humanReadableDate = dateHuman( o_strdup(readData_db(rSet, "docdatey")),
                                  o_strdup(readData_db(rSet, "docdatem")),
                                  o_strdup(readData_db(rSet, "docdated")),

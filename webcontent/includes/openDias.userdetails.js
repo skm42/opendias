@@ -34,9 +34,9 @@ $(document).ready(function() {
              error: function( x, t, m ) {
                $('#password').val('');
                if(t=="timeout") {
-                 alert("[s001] " + LOCAL_timeout_talking_to_server);
+                 alert("[s001] ---LOCAL_timeout_talking_to_server---");
                } else {
-                 alert("[s001] " + LOCAL_error_talking_to_server+": "+t+"\n"+m);
+                 alert("[s001] ---LOCAL_error_talking_to_server---: "+t+"\n"+m);
                }
              },
              success: function(data){
@@ -72,9 +72,9 @@ $(document).ready(function() {
              type: "POST",
              error: function( x, t, m ) {
                if(t=="timeout") {
-                 alert("[s001] " + LOCAL_timeout_talking_to_server);
+                 alert("[s001] ---LOCAL_timeout_talking_to_server---");
                } else {
-                 alert("[s001] " + LOCAL_error_talking_to_server+": "+t+"\n"+m);
+                 alert("[s001] ---LOCAL_error_talking_to_server---: "+t+"\n"+m);
                }
              },
              success: function(data){

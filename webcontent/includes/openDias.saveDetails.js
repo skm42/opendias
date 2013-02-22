@@ -15,14 +15,14 @@ function sendUpdate(kkey, vvalue) {
              type: "POST",
              error: function( x, t, m ) {
                if(t=="timeout") {
-                 alert("[s001] " + LOCAL_timeout_talking_to_server);
+                 alert("[s001] ---LOCAL_timeout_talking_to_server---");
                } else {
-                 alert("[s001] " + LOCAL_error_talking_to_server+": "+t+"\n"+m);
+                 alert("[s001] ---LOCAL_error_talking_to_server---: "+t+"\n"+m);
                }
              },
              success: function(data){
                if( $(data).find('error').text() ) {
-                 alert( LOCAL_error_while_updating );
+                 alert( "---LOCAL_error_while_updating---" );
                  unlockForm(0);
                } else {
                  unlockForm(1);
@@ -47,14 +47,14 @@ function moveTag(tag, docid, action) {
              type: "POST",
              error: function( x, t, m ) {
                if(t=="timeout") {
-                 alert("[s002] " + LOCAL_timeout_talking_to_server);
+                 alert("[s002] ---LOCAL_timeout_talking_to_server---");
                } else {
-                 alert("[s002] " + LOCAL_error_talking_to_server+": "+t+"\n"+m);
+                 alert("[s002] ---LOCAL_error_talking_to_server---: "+t+"\n"+m);
                }
              },
              success: function(data){
                if( $(data).find('error').text() ) {
-                 alert( LOCAL_error_while_updating );
+                 alert( "---LOCAL_error_while_updating---" );
                  unlockForm(0);
                } else {
                  unlockForm(1);
@@ -85,21 +85,21 @@ function changeFormState(state) {
 function oncloseEvent() {
   var notComplete = 0;
   var msg = "";
-  if(document.getElementById('title').value == LOCAL_default_title ) {
+  if(document.getElementById('title').value == "---LOCAL_default_title---" ) {
     notComplete = 1;
-    msg += LOCAL_default_title_warning + ". ";
+    msg += "---LOCAL_default_title_warning---. ";
   }
-  if(document.getElementById('docDate').value == LOCAL_default_date ) {
+  if(document.getElementById('docDate').value == "---LOCAL_default_date---" ) {
     notComplete = 1;
-    msg += LOCAL_default_date_warning + ". ";
+    msg += "---LOCAL_default_date_warning---. ";
   }
   if(document.getElementById('selected').getElementsByTagName('tr').length == 1) {
     notComplete = 1;
-    msg += LOCAL_no_tags_assigned + ". ";
+    msg += "---LOCAL_no_tags_assigned---. ";
   }
 
   if(notComplete == 1) {
-    return LOCAL_doc_incomplete_warning + ": "+msg;
+    return "---LOCAL_doc_incomplete_warning---: "+msg;
   }
 }
 
@@ -116,7 +116,7 @@ $(document).ready(function() {
   }
 
   $('#delete').click( function() {
-    var answer = confirm( LOCAL_sure_to_delete_doc );
+    var answer = confirm( "---LOCAL_sure_to_delete_doc---" );
     if (answer){
       $.ajax({ url: "/opendias/dynamic",
              dataType: "xml",
@@ -128,14 +128,14 @@ $(document).ready(function() {
              type: "POST",
              error: function( x, t, m ) {
                if(t=="timeout") {
-                 alert("[s003] " + LOCAL_timeout_talking_to_server);
+                 alert("[s003] ---LOCAL_timeout_talking_to_server---");
                } else {
-                 alert("[s003] " + LOCAL_error_talking_to_server+": "+t+"\n"+m);
+                 alert("[s003] ---LOCAL_error_talking_to_server---: "+t+"\n"+m);
                }
              },
              success: function(data){
                if( $(data).find('error').text() ) {
-                 alert( LOCAL_error_while_deleting_doc );
+                 alert( "---LOCAL_error_while_deleting_doc---" );
                  unlockForm(0);
                } else {
                  document.location.href = "/opendias/";

@@ -79,6 +79,7 @@ char * itoa(long int val, int base) {
 /* load a file into a buffer */
 size_t load_file_to_memory(const char *p_filename, char **result) {
 
+  o_log(DEBUGM,"load_file_to_memory--> loading %s",p_filename);
   size_t size = 0;
   FILE *p_f = fopen(p_filename, "r");
 
@@ -107,6 +108,7 @@ size_t load_file_to_memory(const char *p_filename, char **result) {
 
   fclose(p_f);
   (*result)[size] = 0;
+  o_log(DEBUGM,"load_file_to_memory--> finished loading %s %d bytes into memory",p_filename,(int)size);
   return size;
 
 }

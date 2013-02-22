@@ -61,31 +61,29 @@ struct priverlage {
 static size_t getFromFile_fullPath(const char *url, const char *lang, char **data) {
 
   size_t size;
-  char *localised = NULL;
+  char *tmpl = NULL;
 
-  // Could the file were getting have a localised version?
-  if( 0!=strstr(url,".html") || 0!=strstr(url,".txt") || 0!=strstr(url,".resource") ) {
-    localised = o_printf("%s.%s", url, lang);
-    // Check localised version is available
-    if( 0 != access(localised, F_OK) ) {
-      o_log(ERROR, "File '%s' is not readable", localised);
-      free( localised );
-      localised = o_printf("%s.en", url);
-    } 
-    if( 0 != access(localised, F_OK) ) {
-      o_log(ERROR, "File '%s' is not readable", localised);
-      free( localised );
-      localised = NULL;
-    } 
-  }
-  if ( localised == NULL ) {
-    localised = o_printf("%s", url);
-  }
-	o_log(SQLDEBUG,"enterting getFromFile_fullpath: %s", localised);
-
-  size = load_file_to_memory(localised, data);
-  free(localised);
-  return size;
+  // Do we have a template to load?
+	tmpl = o_printf("%s.tmpl", url, lang);
+	o_log(DEBUGM,"getFromFile_fullPath-->template expected for url %s template=%s",url,tmpl);
+	//localised = o_printf("%s.%s", url, lang);
+	// Check template is available
+	if( access(tmpl, F_OK) != 0 ) {
+		if ( access(url, F_OK ) == 0 ) {
+			size = load_file_to_memory(url, data);
+			free( tmpl );
+			return(size);
+		} else {
+			o_log(ERROR,"getFromFile_fullPath-->can not access %s",url);
+			return(0);
+		}
+   	} else {
+		o_log(DEBUGM,"enterting getFromFile_fullpath: %s", tmpl);
+  		size = load_file_to_memory(tmpl, data);
+  		free(tmpl);
+  		return(size);
+	}
+   
 }
 
 static size_t getFromFile(const char *url, const char *lang, char **data) {
@@ -139,9 +137,23 @@ static char *build_page (char *page, const char *lang) {
 //                                                  | sll *prev
 //                                                  ----
 
-static int send_page (struct MHD_Connection *connection, char *page, int status_code, const char* mimetype, size_t contentSize, struct connection_info_struct *con_info ) {
+static int send_page (struct MHD_Connection *connection, char *page, int status_code, const char* mimetype, size_t contentSize, struct connection_info_struct *con_info , char *lang) {
   int ret;
   struct MHD_Response *response;
+
+	if ( strcmp(mimetype,"text/html") == 0 || \
+		strcmp(mimetype,"text/xml") == 0 || \
+		strcmp(mimetype,"application/javascript") == 0
+	) {
+		o_log(DEBUGM,"send_page: drop in localization for mimetype %s contentSize %d",mimetype,contentSize);
+		//o_log(DEBUGM,"send_page: content is (%s)",page);
+
+		localize(&page,con_info->lang,&contentSize);
+		o_log(DEBUGM,"send_page: localize finished contentSize is now %d",contentSize);
+		//o_log(DEBUGM,"send_page: content is (%s)",page);
+	} else {
+		o_log(DEBUGM,"localization for mimetype %s not required",mimetype);
+	}
 
   response = MHD_create_response_from_data (contentSize, (void *) page, MHD_NO, MHD_YES);
   free(page);
@@ -189,7 +201,7 @@ static int send_page (struct MHD_Connection *connection, char *page, int status_
 }
 
 static int send_page_bin (struct MHD_Connection *connection, char *page, int status_code, const char* mimetype) {
-  return send_page(connection, page, status_code, mimetype, strlen(page), NULL);
+  return send_page(connection, page, status_code, mimetype, strlen(page), NULL, NULL);
 }
 
 static int iterate_post (void *coninfo_cls, enum MHD_ValueKind kind, const char *key, const char *filename, const char *content_type, const char *transfer_encoding, const char *data, uint64_t off, size_t size) {
@@ -410,6 +422,8 @@ int answer_to_connection (void *cls, struct MHD_Connection *connection,
   struct simpleLinkedList *session_data = NULL;
   char *session_id = NULL;
 
+	o_log(DEBUGM,"entering answer_to_connection");
+
   // Remove the begining "/opendias" (so this URL can be used like:)
   // http://server:port/opendias/
   // or via a server (apache) rewrite rule
@@ -417,26 +431,29 @@ int answer_to_connection (void *cls, struct MHD_Connection *connection,
   url = url_orig;
   if( 0 != strncmp(url,"/opendias", 9) ) {
     o_log(ERROR, "request '%s' does not start '/opendias'", url_orig);
-    return send_page_bin (connection, build_page(o_printf("<p>%s</p>", getString("LOCAL_request_error", "en") ), "en"), MHD_HTTP_BAD_REQUEST, MIMETYPE_HTML);
+	//check en
+    return send_page_bin (connection, build_page(o_printf("<p>---LOCAL_request_error---</p>"), "en"), MHD_HTTP_BAD_REQUEST, MIMETYPE_HTML);
   }
   url += 9;
 
   // First Validate the request basic fields
   if( 0 != strstr(url, "..") ) {
     o_log(DEBUGM, "request trys to move outside the document root");
-    return send_page_bin (connection, build_page(o_printf("<p>%s</p>", getString("LOCAL_server_error", "en") ), "en"), MHD_HTTP_BAD_REQUEST, MIMETYPE_HTML);
+	//check en
+    return send_page_bin (connection, build_page(o_printf("<p>---LOCAL_server_error---</p>"), "en"), MHD_HTTP_BAD_REQUEST, MIMETYPE_HTML);
   }
 
+	char *lang;
   // Discover Params
   if (NULL == *con_cls) {
 
     // Check client language
-    char *lang = userLanguage(connection);
+    lang = userLanguage(connection);
 
     // Check that we've not got too many clients
     if (nr_of_clients >= MAXCLIENTS)
       return send_page_bin (connection, 
-                            build_page(o_printf("<p>%s</p>", getString("LOCAL_server_busy", lang) ), lang), 
+                            build_page(o_printf("<p>---LOCAL_server_busy---</p>"), lang), 
                             MHD_HTTP_SERVICE_UNAVAILABLE, 
                             MIMETYPE_HTML);
 
@@ -481,6 +498,11 @@ int answer_to_connection (void *cls, struct MHD_Connection *connection,
     con_info->session_data = session_data;
     con_info->session_id = session_id;
 
+	o_log(DEBUGM,"web_handler--> con_info->lang = %s con_info->session_id = %d, method=%s",
+		con_info->lang,
+		con_info->session_id,
+		method);
+
     if (0 == strcmp (method, "POST")) {
       con_info->post_data = sll_init();
       con_info->postprocessor = MHD_create_post_processor (connection, POSTBUFFERSIZE, iterate_post, (void *) con_info);
@@ -495,6 +517,7 @@ int answer_to_connection (void *cls, struct MHD_Connection *connection,
       con_info->connectiontype = GET;
 
     *con_cls = (void *) con_info;
+	o_log(DEBUGM,"answer_to_connection: conf_info created returning MHD_YES");
     return MHD_YES;
   }
   con_info = *con_cls;
@@ -529,7 +552,7 @@ int answer_to_connection (void *cls, struct MHD_Connection *connection,
     else if( 0!=strstr(url,".html") ) {
       size = getFromFile(url, con_info->lang, &content);
       if( 0 == size ) {
-        free(content);
+        //free(content);
         content = o_strdup("");
         status = MHD_HTTP_NOT_FOUND;
         size = 0;
@@ -548,7 +571,7 @@ int answer_to_connection (void *cls, struct MHD_Connection *connection,
     else if( 0!=strstr(url,"/images/") && 0!=strstr(url,".png") ) {
       size = getFromFile(url, con_info->lang, &content);
       if( 0 == size ) {
-        free(content);
+        //what is the reason for free size=0? free(content);
         content = o_strdup("");
         status = MHD_HTTP_NOT_FOUND;
       	mimetype = MIMETYPE_HTML;
@@ -561,7 +584,7 @@ int answer_to_connection (void *cls, struct MHD_Connection *connection,
     else if( 0!=strstr(url,"/images/") && 0!=strstr(url,".jpg") ) {
       size = getFromFile(url, con_info->lang, &content);
       if( 0 == size ) {
-        free(content);
+        //free(content);
         content = o_strdup("");
         status = MHD_HTTP_NOT_FOUND;
       	mimetype = MIMETYPE_HTML;
@@ -574,7 +597,7 @@ int answer_to_connection (void *cls, struct MHD_Connection *connection,
     // Serve 'scans' content [image|pdf|odf]
     else if( 0!=strstr(url,"/scans/") && (0!=strstr(url,".jpg") || 0!=strstr(url,".pdf") || 0!=strstr(url,".odt") || 0!=strstr(url,"_thumb.png") ) ) {
       if ( accessPrivs.view_doc == 0 ) {
-        content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>%s</error></Response>", getString("LOCAL_no_access", con_info->lang) );
+        content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>---LOCAL_no_access---</error></Response>");
         size = strlen(content);
       }
       else {
@@ -597,7 +620,7 @@ int answer_to_connection (void *cls, struct MHD_Connection *connection,
           size = 0;
 
         if( 0 == size ) {
-          free(content);
+          //free(content);
           content = o_strdup("");
           status = MHD_HTTP_NOT_FOUND;
       	  mimetype = MIMETYPE_HTML;
@@ -610,7 +633,7 @@ int answer_to_connection (void *cls, struct MHD_Connection *connection,
     else if( 0!=strstr(url,"/includes/") && ( 0!=strstr(url,".js") || 0!=strstr(url,".resource") ) ) {
       size = getFromFile(url, con_info->lang, &content);
       if( 0 == size ) {
-        free(content);
+        //free(content);
         content = o_strdup("");
         status = MHD_HTTP_NOT_FOUND;
       	mimetype = MIMETYPE_HTML;
@@ -624,7 +647,7 @@ int answer_to_connection (void *cls, struct MHD_Connection *connection,
     else if( 0!=strstr(url,"/style/") && 0!=strstr(url,".css") ) {
       size = getFromFile(url, con_info->lang, &content);
       if( 0 == size ) {
-        free(content);
+        //free(content);
         content = o_strdup("");
         status = MHD_HTTP_NOT_FOUND;
       	mimetype = MIMETYPE_HTML;
@@ -642,7 +665,7 @@ int answer_to_connection (void *cls, struct MHD_Connection *connection,
       size = 0;
     }
 
-    return send_page (connection, content, status, mimetype, size, con_info);
+    return send_page (connection, content, status, mimetype, size, con_info, NULL);
   }
 
   if (0 == strcmp (method, "POST")) {
@@ -661,7 +684,7 @@ int answer_to_connection (void *cls, struct MHD_Connection *connection,
 
         if( 1 == basicValidation(con_info->post_data) ) {
           // If valiation failed, then build an error page and dont try anything else.
-          content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>%s</error></Response>", getString("LOCAL_processing_error", con_info->lang) );
+          content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>---LOCAL_processing_error---</error></Response>");
           mimetype = MIMETYPE_XML;
           size = strlen(content);
         }
@@ -681,14 +704,14 @@ int answer_to_connection (void *cls, struct MHD_Connection *connection,
           if ( action && 0 == strcmp(action, "getDocDetail") ) {
             o_log(INFORMATION, "Processing request for: document details");
             if ( accessPrivs.view_doc == 0 )
-              content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>%s</error></Response>", getString("LOCAL_no_access", con_info->lang) );
+              content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>---LOCAL_no_access---</error></Response>");
             else if ( validate( con_info->post_data, action ) ) 
-              content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>%s</error></Response>", getString("LOCAL_processing_error", con_info->lang) );
+              content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>---LOCAL_processing_error---</error></Response>");
             else {
               char *docid = getPostData(con_info->post_data, "docid");
               content = getDocDetail(docid, con_info->lang); //doc_editor.c
               if(content == (void *)NULL)
-                content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>%s</error></Response>", getString("LOCAL_processing_error", con_info->lang) );
+                content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>---LOCAL_processing_error---</error></Response>");
             }
             mimetype = MIMETYPE_XML;
             size = strlen(content);
@@ -698,18 +721,18 @@ int answer_to_connection (void *cls, struct MHD_Connection *connection,
             o_log(INFORMATION, "Processing request for: getScannerList");
 #ifdef CAN_SCAN
             if ( accessPrivs.add_scan == 0 )
-              content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>%s</error></Response>", getString("LOCAL_no_access", con_info->lang) );
+              content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>---LOCAL_no_access---</error></Response>");
             else if ( validate( con_info->post_data, action ) ) 
-              content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>%s</error></Response>", getString("LOCAL_processing_error", con_info->lang) );
+              content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>---LOCAL_processing_error---</error></Response>");
             else {
               content = getScannerList(con_info->lang); // pageRender.c
               if(content == (void *)NULL) {
-                content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>%s</error></Response>", getString("LOCAL_processing_error", con_info->lang) );
+                content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>---LOCAL_processing_error---</error></Response>");
               }
             }
 #else
             o_log(ERROR, "Support for this request has not been compiled in");
-            content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>%s</error></Response>", getString("LOCAL_missing_support", con_info->lang) );
+            content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>---LOCAL_missing_support---</error></Response>");
 #endif
             mimetype = MIMETYPE_XML;
             size = strlen(content);
@@ -719,9 +742,9 @@ int answer_to_connection (void *cls, struct MHD_Connection *connection,
             o_log(INFORMATION, "Processing request for: doScan");
 #ifdef CAN_SCAN
             if ( accessPrivs.add_scan == 0 )
-              content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>%s</error></Response>", getString("LOCAL_no_access", con_info->lang) );
+              content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>---LOCAL_no_access---</error></Response>");
             else if ( validate( con_info->post_data, action ) ) 
-              content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>%s</error></Response>", getString("LOCAL_processing_error", con_info->lang) );
+              content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>---LOCAL_processing_error---</error></Response>");
             else {
               char *deviceid = getPostData(con_info->post_data, "deviceid");
               char *format = getPostData(con_info->post_data, "format");
@@ -735,12 +758,12 @@ int answer_to_connection (void *cls, struct MHD_Connection *connection,
               content = doScan(deviceid, format, resolution, pages, ocr, pagelength, con_info->lang); // pageRender.c
 #endif /* THREAD_JOIN */
               if(content == (void *)NULL) {
-                content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>%s</error></Response>", getString("LOCAL_processing_error", con_info->lang) );
+                content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>---LOCAL_processing_error---</error></Response>");
               }
             }
 #else
             o_log(ERROR, "Support for this request has not been compiled in");
-            content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>%s</error></Response>", getString("LOCAL_missing_support", con_info->lang) );
+            content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>---LOCAL_missing_support---</error></Response>");
 #endif
             mimetype = MIMETYPE_XML;
             size = strlen(content);
@@ -750,19 +773,19 @@ int answer_to_connection (void *cls, struct MHD_Connection *connection,
             o_log(INFORMATION, "Processing request for: getScanning Progress");
 #ifdef CAN_SCAN
             if ( accessPrivs.add_scan == 0 )
-              content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>%s</error></Response>", getString("LOCAL_no_access", con_info->lang) );
+              content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>---LOCAL_no_access---</error></Response>");
             else if ( validate( con_info->post_data, action ) ) 
-              content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>%s</error></Response>", getString("LOCAL_processing_error", con_info->lang) );
+              content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>---LOCAL_processing_error---</error></Response>");
             else {
               char *scanprogressid = getPostData(con_info->post_data, "scanprogressid");
               content = getScanningProgress(scanprogressid); //pageRender.c
               if(content == (void *)NULL) {
-                content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>%s</error></Response>", getString("LOCAL_processing_error", con_info->lang) );
+                content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>---LOCAL_processing_error---</error></Response>");
               }
             }
 #else
             o_log(ERROR, "Support for this request has not been compiled in");
-            content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>%s</error></Response>", getString("LOCAL_missing_support", con_info->lang) );
+            content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>---LOCAL_missing_support---</error></Response>");
 #endif
             mimetype = MIMETYPE_XML;
             size = strlen(content);
@@ -772,9 +795,9 @@ int answer_to_connection (void *cls, struct MHD_Connection *connection,
             o_log(INFORMATION, "Processing request for: restart scan after page change");
 #ifdef CAN_SCAN
             if ( accessPrivs.add_scan == 0 )
-              content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>%s</error></Response>", getString("LOCAL_no_access", con_info->lang) );
+              content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>---LOCAL_no_access---</error></Response>");
             else if ( validate( con_info->post_data, action ) ) 
-              content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>%s</error></Response>", getString("LOCAL_processing_error", con_info->lang) );
+              content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>---LOCAL_processing_error---</error></Response>");
             else {
               char *scanprogressid = getPostData(con_info->post_data, "scanprogressid");
 #ifdef THREAD_JOIN
@@ -783,12 +806,12 @@ int answer_to_connection (void *cls, struct MHD_Connection *connection,
               content = nextPageReady(scanprogressid, con_info->lang); //pageRender.c
 #endif /* THREAD_JOIN */
               if(content == (void *)NULL) {
-                content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>%s</error></Response>", getString("LOCAL_processing_error", con_info->lang) );
+                content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>---LOCAL_processing_error---</error></Response>");
               }
             }
 #else
             o_log(ERROR, "Support for this request has not been compiled in");
-            content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>%s</error></Response>", getString("LOCAL_missing_support", con_info->lang) );
+            content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>---LOCAL_missing_support---</error></Response>");
 #endif
             mimetype = MIMETYPE_XML;
             size = strlen(content);
@@ -797,16 +820,16 @@ int answer_to_connection (void *cls, struct MHD_Connection *connection,
           else if ( action && 0 == strcmp(action, "updateDocDetails") ) {
             o_log(INFORMATION, "Processing request for: update doc details");
             if ( accessPrivs.edit_doc == 0 )
-              content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>%s</error></Response>", getString("LOCAL_no_access", con_info->lang) );
+              content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>---LOCAL_no_access---</error></Response>");
             else if ( validate( con_info->post_data, action ) ) 
-              content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>%s</error></Response>", getString("LOCAL_processing_error", con_info->lang) );
+              content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>---LOCAL_processing_error---</error></Response>");
             else {
               char *docid = getPostData(con_info->post_data, "docid");
               char *key = getPostData(con_info->post_data, "kkey");
               char *value = getPostData(con_info->post_data, "vvalue");
               content = updateDocDetails(docid, key, value); //doc_editor.c
               if(content == (void *)NULL) {
-                content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>%s</error></Response>", getString("LOCAL_processing_error", con_info->lang) );
+                content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>---LOCAL_processing_error---</error></Response>");
               }
             }
             mimetype = MIMETYPE_XML;
@@ -816,16 +839,16 @@ int answer_to_connection (void *cls, struct MHD_Connection *connection,
           else if ( action && 0 == strcmp(action, "moveTag") ) {
             o_log(INFORMATION, "Processing request for: Move Tag");
             if ( accessPrivs.edit_doc == 0 )
-              content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>%s</error></Response>", getString("LOCAL_no_access", con_info->lang) );
+              content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>---LOCAL_no_access---</error></Response>");
             else if ( validate( con_info->post_data, action ) ) 
-              content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>%s</error></Response>", getString("LOCAL_processing_error", con_info->lang) );
+              content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>---LOCAL_processing_error---</error></Response>");
             else {
               char *docid = getPostData(con_info->post_data, "docid");
               char *tag = getPostData(con_info->post_data, "tag");
               char *subaction = getPostData(con_info->post_data, "subaction");
               content = updateTagLinkage(docid, tag, subaction); //doc_editor.c
               if(content == (void *)NULL) 
-                content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>%s</error></Response>", getString("LOCAL_processing_error", con_info->lang) );
+                content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>---LOCAL_processing_error---</error></Response>");
             }
             mimetype = MIMETYPE_XML;
             size = strlen(content);
@@ -834,9 +857,9 @@ int answer_to_connection (void *cls, struct MHD_Connection *connection,
           else if ( action && 0 == strcmp(action, "docFilter") ) {
             o_log(INFORMATION, "Processing request for: Doc List Filter");
             if ( accessPrivs.view_doc == 0 )
-              content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>%s</error></Response>", getString("LOCAL_no_access", con_info->lang) );
+              content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>---LOCAL_no_access---</error></Response>");
             else if ( validate( con_info->post_data, action ) ) 
-              content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>%s</error></Response>", getString("LOCAL_processing_error", con_info->lang) );
+              content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>---LOCAL_processing_error---</error></Response>");
             else {
               char *subaction = getPostData(con_info->post_data, "subaction");
               char *textSearch = getPostData(con_info->post_data, "textSearch");
@@ -850,7 +873,7 @@ int answer_to_connection (void *cls, struct MHD_Connection *connection,
               char *sortorder = getPostData(con_info->post_data, "sortorder");
               content = docFilter(subaction, textSearch, isActionRequired, startDate, endDate, tags, page, range, sortfield, sortorder, con_info->lang); //pageRender.c
               if(content == (void *)NULL) {
-                content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>%s</error></Response>", getString("LOCAL_processing_error", con_info->lang) );
+                content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>---LOCAL_processing_error---</error></Response>");
               }
             }
             mimetype = MIMETYPE_XML;
@@ -860,37 +883,38 @@ int answer_to_connection (void *cls, struct MHD_Connection *connection,
           else if ( action && 0 == strcmp(action, "deleteDoc") ) {
             o_log(INFORMATION, "Processing request for: delete document");
             if ( accessPrivs.delete_doc == 0 )
-              content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>%s</error></Response>", getString("LOCAL_no_access", con_info->lang) );
+              content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>---LOCAL_no_access---</error></Response>");
             else if ( validate( con_info->post_data, action ) ) 
-              content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>%s</error></Response>", getString("LOCAL_processing_error", con_info->lang) );
+              content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>---LOCAL_processing_error---</error></Response>");
             else {
               char *docid = getPostData(con_info->post_data, "docid");
               content = doDelete(docid); // doc_editor.c
               if(content == (void *)NULL) {
-                content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>%s</error></Response>", getString("LOCAL_processing_error", con_info->lang) );
+                content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>---LOCAL_processing_error---</error></Response>");
               }
             }
             mimetype = MIMETYPE_XML;
             size = strlen(content);
           }
 
+
           else if ( action && 0 == strcmp(action, "regenerateThumb") ) {
             o_log(INFORMATION, "Processing request for: regenerateThumb");
 #ifdef CAN_PDF
             if ( accessPrivs.edit_doc == 0 )
-              content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>%s</error></Response>", getString("LOCAL_no_access", con_info->lang) );
+              content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>---LOCAL_no_access---</error></Response>");
             else if ( validate( con_info->post_data, action ) ) 
-              content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>%s</error></Response>", getString("LOCAL_processing_error", con_info->lang) );
+              content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>---LOCAL_processing_error---</error></Response>");
             else {
               char *docid = getPostData(con_info->post_data, "docid");
               content = extractThumbnail( docid ); //import_doc.c
               if(content == (void *)NULL) {
-                content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>%s</error></Response>", getString("LOCAL_processing_error", con_info->lang) );
+                content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>---LOCAL_processing_error---</error></Response>");
               }
             }
 #else
             o_log(ERROR, "Support for this request has not been compiled in");
-            content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>%s</error></Response>", getString("LOCAL_missing_support", con_info->lang) );
+            content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>---LOCAL_missing_support---</error></Response>");
 #endif
             mimetype = MIMETYPE_XML;
             size = strlen(content);
@@ -899,14 +923,14 @@ int answer_to_connection (void *cls, struct MHD_Connection *connection,
           else if ( action && 0 == strcmp(action, "uploadfile") ) {
             o_log(INFORMATION, "Processing request for: uploadfile");
             if ( accessPrivs.add_import == 0 )
-              content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>%s</error></Response>", getString("LOCAL_no_access", con_info->lang) );
+              content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>---LOCAL_no_access---</error></Response>");
             else if ( validate( con_info->post_data, action ) ) 
-              content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>%s</error></Response>", getString("LOCAL_processing_error", con_info->lang) );
+              content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>---LOCAL_processing_error---</error></Response>");
             else {
               char *filename = getPostData(con_info->post_data, "uploadfile");
               content = uploadfile(filename, con_info->lang); // import_doc.c
               if(content == (void *)NULL)
-                content = o_printf("<p>%s</p>", getString("LOCAL_server_error", con_info->lang) );
+                content = o_printf("<p>---LOCAL_server_error---</p>");
             }
             mimetype = MIMETYPE_HTML;
             size = strlen(content);
@@ -915,15 +939,15 @@ int answer_to_connection (void *cls, struct MHD_Connection *connection,
           else if ( action && 0 == strcmp(action, "titleAutoComplete") ) {
             o_log(INFORMATION, "Processing request for: titleAutoComplete");
             if ( accessPrivs.view_doc == 0 )
-              content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>%s</error></Response>", getString("LOCAL_no_access", con_info->lang) );
+              content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>---LOCAL_no_access---</error></Response>");
             else if ( validate( con_info->post_data, action ) ) 
-              content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>%s</error></Response>", getString("LOCAL_processing_error", con_info->lang) );
+              content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>---LOCAL_processing_error---</error></Response>");
             else {
               char *startsWith = getPostData(con_info->post_data, "startsWith");
               char *notLinkedTo = getPostData(con_info->post_data, "notLinkedTo");
               content = titleAutoComplete(startsWith, notLinkedTo); // pageRender.c
               if(content == (void *)NULL)
-                content = o_printf("<p>%s</p>", getString("LOCAL_server_error", con_info->lang) );
+                content = o_printf("<p>---LOCAL_server_error---</p>");
             }
             mimetype = MIMETYPE_JSON;
             size = strlen(content);
@@ -932,15 +956,15 @@ int answer_to_connection (void *cls, struct MHD_Connection *connection,
           else if ( action && 0 == strcmp(action, "tagsAutoComplete") ) {
             o_log(INFORMATION, "Processing request for: tagsAutoComplete");
             if ( accessPrivs.view_doc == 0 )
-              content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>%s</error></Response>", getString("LOCAL_no_access", con_info->lang) );
+              content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>---LOCAL_no_access---</error></Response>");
             else if ( validate( con_info->post_data, action ) ) 
-              content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>%s</error></Response>", getString("LOCAL_processing_error", con_info->lang) );
+              content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>---LOCAL_processing_error---</error></Response>");
             else {
               char *startsWith = getPostData(con_info->post_data, "startsWith");
               char *docid = getPostData(con_info->post_data, "docid");
               content = tagsAutoComplete(startsWith, docid); // pageRender.c
               if(content == (void *)NULL)
-                content = o_printf("<p>%s</p>", getString("LOCAL_server_error", con_info->lang) );
+                content = o_printf("<p>---LOCAL_server_error---</p>");
             }
             mimetype = MIMETYPE_JSON;
             size = strlen(content);
@@ -949,13 +973,13 @@ int answer_to_connection (void *cls, struct MHD_Connection *connection,
           else if ( action && 0 == strcmp(action, "checkLogin") ) {
             o_log(INFORMATION, "Processing request for: checkLogin");
             if ( validate( con_info->post_data, action ) ) 
-              content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>%s</error></Response>", getString("LOCAL_processing_error", con_info->lang) );
+              content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>---LOCAL_processing_error---</error></Response>");
             else {
               char *username = getPostData(con_info->post_data, "username");
               char *password = getPostData(con_info->post_data, "password");
               content = checkLogin(username, password, con_info->lang, con_info->session_data); // pageRender.c
               if(content == (void *)NULL) 
-                content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>%s</error></Response>", getString("LOCAL_processing_error", con_info->lang) );
+                content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>---LOCAL_processing_error---</error></Response>");
             }
             mimetype = MIMETYPE_JSON;
             size = strlen(content);
@@ -964,11 +988,11 @@ int answer_to_connection (void *cls, struct MHD_Connection *connection,
           else if ( action && 0 == strcmp(action, "logout") ) {
             o_log(INFORMATION, "Processing request for: logout");
             if ( validate( con_info->post_data, action ) ) 
-              content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>%s</error></Response>", getString("LOCAL_processing_error", con_info->lang) );
+              content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>---LOCAL_processing_error---</error></Response>");
             else {
               content = doLogout( con_info->session_data ); // pageRender.c
               if(content == (void *)NULL) 
-                content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>%s</error></Response>", getString("LOCAL_processing_error", con_info->lang) );
+                content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>---LOCAL_processing_error---</error></Response>");
             }
             mimetype = MIMETYPE_JSON;
             size = strlen(content);
@@ -977,7 +1001,7 @@ int answer_to_connection (void *cls, struct MHD_Connection *connection,
           else if ( action && 0 == strcmp(action, "updateUser") ) {
             o_log(INFORMATION, "Processing request for: updateUser");
             if ( validate( con_info->post_data, action ) ) 
-              content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>%s</error></Response>", getString("LOCAL_processing_error", con_info->lang) );
+              content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>---LOCAL_processing_error---</error></Response>");
             else {
               char *username = getPostData(con_info->post_data, "username");
               char *realname = getPostData(con_info->post_data, "realname");
@@ -985,7 +1009,7 @@ int answer_to_connection (void *cls, struct MHD_Connection *connection,
               char *role = getPostData(con_info->post_data, "role");
               content = updateUser(username, realname, password, role, accessPrivs.update_access, con_info->session_data, con_info->lang); // pageRender.c
               if(content == (void *)NULL) 
-                content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>%s</error></Response>", getString("LOCAL_processing_error", con_info->lang) );
+                content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>---LOCAL_processing_error---</error></Response>");
             }
             mimetype = MIMETYPE_JSON;
             size = strlen(content);
@@ -994,7 +1018,7 @@ int answer_to_connection (void *cls, struct MHD_Connection *connection,
           else if ( action && 0 == strcmp(action, "createUser") ) {
             o_log(INFORMATION, "Processing request for: createUser");
             if ( validate( con_info->post_data, action ) ) 
-              content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>%s</error></Response>", getString("LOCAL_processing_error", con_info->lang) );
+              content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>---LOCAL_processing_error---</error></Response>");
             else {
               char *username = getPostData(con_info->post_data, "username");
               char *realname = getPostData(con_info->post_data, "realname");
@@ -1004,12 +1028,12 @@ int answer_to_connection (void *cls, struct MHD_Connection *connection,
               //content = updateUser(username, realname, password, role, accessPrivs.update_access, con_info->session_data, con_info->lang); // pageRender.c
               content = createUser(username, realname, password, role, accessPrivs.update_access, con_info->session_data, con_info->lang); // pageRender.c
               if(content == (void *)NULL) 
-                content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>%s</error></Response>", getString("LOCAL_processing_error", con_info->lang) );
+                content = o_printf("<?xml version='1.0' encoding='utf-8'?>\n<Response><error>---LOCAL_processing_error---</error></Response>");
             }
             mimetype = MIMETYPE_JSON;
             size = strlen(content);
-          } 
-
+          }
+  
           else {
             // should have been picked up by validation! and so never got here
             o_log(WARNING, "disallowed content: post request for unknown action.");
@@ -1028,10 +1052,10 @@ int answer_to_connection (void *cls, struct MHD_Connection *connection,
       size = 0;
     }
 
-    o_log(DEBUGM, "Serving the following content: %s", content);
-    return send_page (connection, content, status, mimetype, size, con_info);
+    o_log(DEBUGM, "Serving the content of mimetype %s content=(%s)",mimetype, content);
+    return send_page (connection, content, status, mimetype, size, con_info,NULL);
   }
 
-  return send_page_bin (connection, build_page(o_printf("<p>%s</p>", getString("LOCAL_server_error", con_info->lang) ), con_info->lang), MHD_HTTP_BAD_REQUEST, MIMETYPE_HTML);
+  return send_page_bin (connection, build_page(o_printf("<p>---LOCAL_server_error---</p>"), con_info->lang), MHD_HTTP_BAD_REQUEST, MIMETYPE_HTML);
 }
 

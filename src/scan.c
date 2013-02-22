@@ -480,12 +480,14 @@ void ocrImage( char *uuid, int docid, int page, int request_resolution, PIX *pix
       // that down to grey-scale (1 bpp) - hense the hard coded 1
       ocrScanText = getTextFromImage(pix, request_resolution, ocrLang);
 
-      ocrText = o_printf( getString("LOCAL_page_delimiter", lang), page, ocrScanText);
+	//hmm check
+      ocrText = o_printf( "---LOCAL_page_delimiter---", page, ocrScanText);
       free(ocrScanText);
     }
     else {
+	//hmm check
       o_log(DEBUGM, "OCR was requested, but the specified resolution means it's not safe to be attempted");
-      ocrText = o_printf( getString("LOCAL_resolution_outside_range_to_attempt", lang) );
+      ocrText = o_printf( "---LOCAL_resolution_outside_range_to_attempt---");
     }
   }
   else
@@ -796,7 +798,7 @@ extern char *internalGetScannerList(char *lang) {
         free(ip);
       }
       else {
-        scannerHost = o_strdup( getString("LOCAL_opendias_server", lang) );
+        scannerHost = o_printf("---LOCAL_opendias_server---");
       }
 
 

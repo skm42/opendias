@@ -142,7 +142,7 @@ char *uploadfile(char *filename, char *lang) {
   free( ftype );
 
   if(ocrText == NULL) {
-    ocrText = o_strdup( getString("LOCAL_ocr_default_text", lang ) );
+    ocrText = o_printf("---LOCAL_ocr_default_text---");
   }
   free(datafile);
 

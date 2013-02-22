@@ -455,8 +455,10 @@ int main (int argc, char **argv) {
     exit(EXIT_FAILURE);
   }
 
+	//REMARK generic approach needed
   // Initalise localisaion storage.
   locale_init( "en" );
+  locale_init( "de" );
   startedServices.locale = 1;
 
 #ifdef CAN_SCAN

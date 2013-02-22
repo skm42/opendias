@@ -2,11 +2,11 @@
 SUBDIRS = style includes images
 
 web_DATA = \
-  accessControls.html.* \
-  docList.html.* \
-  docDetail.html.* \
-  body.html.* \
-  acquire.html.* 
+   accessControls.html.tmpl \
+   docList.html.tmpl \
+   docDetail.html.tmpl \
+   body.html.tmpl \
+   acquire.html.tmpl 
 
 webdir = \
 	$(pkgdatadir)/webcontent

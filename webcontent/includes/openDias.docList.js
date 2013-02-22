@@ -46,9 +46,9 @@ $(document).ready(function() {
           },
           error: function( x, t, m ) {
             if(t=="timeout") {
-              alert("[l001] " + LOCAL_timeout_talking_to_server );
+              alert("[l001] ---LOCAL_timeout_talking_to_server---" );
             } else {
-              alert("[l001] " + LOCAL_error_talking_to_server + ": "+t+"\n"+m);
+              alert("[l001] ---LOCAL_error_talking_to_server---: "+t+"\n"+m);
             }
           },
         });
@@ -207,9 +207,9 @@ function loadListData(currentPage) {
          },
          error: function( x, t, m ) {
            if(t=="timeout") {
-             alert("[l002] " + LOCAL_timeout_talking_to_server );
+             alert("[l002] ---LOCAL_timeout_talking_to_server---" );
            } else {
-             alert("[l002] " + LOCAL_error_talking_to_server + ": "+t+"\n"+m);
+             alert("[l002] ---LOCAL_error_talking_to_server---: "+t+"\n"+m);
            }
          },
        });

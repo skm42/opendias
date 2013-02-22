@@ -1,6 +1,5 @@
 
 web_DATA = \
-  generic.resource.* \
   openDias.acquire.js.resource.* \
   openDias.loadDetails.js.resource.* \
   openDias.saveDetails.js.resource.* \
